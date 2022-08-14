@@ -31,10 +31,11 @@ type ReturnType = Token
 var yytext string
 
 const (
-	regPatterns = regPattern0 + "|" + regPattern1 + "|" + regPattern2
+	regPatterns = regPattern0 + "|" + regPattern1 + "|" + regPattern2 + "|" + regPattern3
 	regPattern0 = "^\n"
-	regPattern1 = "^."
-	regPattern2 = "^[a-z]+"
+	regPattern1 = "^\""
+	regPattern2 = "^."
+	regPattern3 = "^[a-z]+"
 )
 
 type Lexer struct {
@@ -68,12 +69,18 @@ func (lex *Lexer) NextToken() (ReturnType, error) {
 		}
 		if matched, _ := regexp.MatchString(regPattern1+"$", yytext); matched {
 			{
+				fmt.Println("double quote")
+			}
+			continue
+		}
+		if matched, _ := regexp.MatchString(regPattern2+"$", yytext); matched {
+			{
 				NumChars++
 				fmt.Println(NumChars)
 			}
 			continue
 		}
-		if matched, _ := regexp.MatchString(regPattern2+"$", yytext); matched {
+		if matched, _ := regexp.MatchString(regPattern3+"$", yytext); matched {
 			{
 				NumChars += len(yytext)
 				return Token{text: yytext, typ: Identifier}, nil

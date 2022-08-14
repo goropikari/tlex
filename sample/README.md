@@ -1,10 +1,11 @@
 ```
 $ go install github.com/goropikari/golex@latest
 $ golex sample.l lex/gen.go
-$ printf "foo a \nbar\nbaz\n" | go run main.go
+$ printf 'foo "a \nbar\nbaz\n' | go run main.go
 output:
         {foo 4}
 4
+double quote
 5
 6
         {bar 4}

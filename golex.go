@@ -230,8 +230,18 @@ func (lex *RegexLexer) nextToken() (string, error) {
 func (lex *RegexLexer) readRegexPattern() string {
 	s := make([]byte, 0)
 	lex.next()
-	for lex.peek() != '"' {
-		s = append(s, lex.peek())
+	var prev byte
+	for {
+		if lex.peek() == '"' {
+			if prev == '\\' {
+				s = append(s, '"')
+			} else {
+				break
+			}
+		} else {
+			s = append(s, lex.peek())
+		}
+		prev = lex.peek()
 		lex.next()
 	}
 	lex.next()

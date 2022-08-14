@@ -24,6 +24,7 @@ type ReturnType = Token
 %%
 
 "\n"      { NumLines++; NumChars++; }
+"\""      { fmt.Println("double quote") }
 "."       { NumChars++; fmt.Println(NumChars) }
 "[a-z]+"  {
     NumChars += len(yytext)
