@@ -1,5 +1,5 @@
 ```
-$ go install github.com/goropikari/golex
+$ go install github.com/goropikari/golex@latest
 $ golex sample.l lex/gen.go
 $ echo -n "foo bar baz" | go run main.go
 output:
