@@ -22,7 +22,8 @@ type ReturnType = Token
 %}
 
 %%
-"\n"      { NumLines++; NumChars++ }
+
+"\n"      { NumLines++; NumChars++; }
 "."       { NumChars++; fmt.Println(NumChars) }
 "[a-z]+"  {
     NumChars += len(yytext)

@@ -152,7 +152,7 @@ func makeRegexPatterns(tokens []RegexAction) string {
 func makeMachers(tokens []RegexAction) string {
 	ms := make([]byte, 0)
 	for i, tok := range tokens {
-		s := fmt.Sprintf("if matched, _ := regexp.MatchString(regPattern%v+\"$\", yytext); matched {\n%v\n}\n", i, tok.body)
+		s := fmt.Sprintf("if matched, _ := regexp.MatchString(regPattern%v+\"$\", yytext); matched {\n%v\ncontinue\n}\n", i, tok.body)
 		ms = append(ms, []byte(s)...)
 	}
 

@@ -64,18 +64,21 @@ func (lex *Lexer) NextToken() (ReturnType, error) {
 				NumLines++
 				NumChars++
 			}
+			continue
 		}
 		if matched, _ := regexp.MatchString(regPattern1+"$", yytext); matched {
 			{
 				NumChars++
 				fmt.Println(NumChars)
 			}
+			continue
 		}
 		if matched, _ := regexp.MatchString(regPattern2+"$", yytext); matched {
 			{
 				NumChars += len(yytext)
 				return Token{text: yytext, typ: Identifier}, nil
 			}
+			continue
 		}
 
 		if prevPos == lex.pos {
