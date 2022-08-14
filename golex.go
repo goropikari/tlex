@@ -253,16 +253,16 @@ func (lex *RegexLexer) readBody() string {
 	lex.skipWhitespace()
 	s := []byte{'{'}
 	lex.next()
-	stack := []struct{}{{}}
+	nlparen := 1
 	for {
 		if lex.peek() == '}' {
-			if len(stack) == 1 {
+			if nlparen == 1 {
 				break
 			}
-			stack = stack[0 : len(stack)-1]
+			nlparen--
 		}
 		if lex.peek() == '{' {
-			stack = append(stack, struct{}{})
+			nlparen++
 		}
 		s = append(s, lex.peek())
 		lex.next()
