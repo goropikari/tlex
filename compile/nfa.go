@@ -33,8 +33,8 @@ func NewState(label string) State {
 }
 
 type NFA struct {
-	q          collection.Set[State]
-	sigma      collection.Set[rune]
+	q collection.Set[State]
+	// sigma      collection.Set[rune]
 	delta      Transition
 	initStates collection.Set[State]
 	finStates  collection.Set[State]
@@ -42,13 +42,13 @@ type NFA struct {
 
 func NewNFA(
 	q collection.Set[State],
-	sigma collection.Set[rune],
+	// sigma collection.Set[rune],
 	delta Transition,
 	initStates collection.Set[State],
 	finStates collection.Set[State]) NFA {
 	return NFA{
-		q:          q,
-		sigma:      sigma,
+		q: q,
+		// sigma:      sigma,
 		delta:      delta,
 		initStates: initStates,
 		finStates:  finStates,
@@ -56,7 +56,8 @@ func NewNFA(
 }
 
 func (nfa NFA) Copy() NFA {
-	return NewNFA(nfa.q.Copy(), nfa.sigma.Copy(), nfa.delta.Copy(), nfa.initStates.Copy(), nfa.finStates.Copy())
+	// return NewNFA(nfa.q.Copy(), nfa.sigma.Copy(), nfa.delta.Copy(), nfa.initStates.Copy(), nfa.finStates.Copy())
+	return NewNFA(nfa.q.Copy(), nfa.delta.Copy(), nfa.initStates.Copy(), nfa.finStates.Copy())
 }
 
 func (nfa NFA) Concat(other NFA) NFA {
@@ -67,9 +68,9 @@ func (nfa NFA) Concat(other NFA) NFA {
 		nfa.q.Insert(st)
 	}
 
-	for r := range other.sigma {
-		nfa.sigma.Insert(r)
-	}
+	// for r := range other.sigma {
+	// 	nfa.sigma.Insert(r)
+	// }
 
 	for tr, ss := range other.delta {
 		nfa.delta[tr] = ss
@@ -85,7 +86,8 @@ func (nfa NFA) Concat(other NFA) NFA {
 		}
 	}
 
-	return NewNFA(nfa.q, nfa.sigma, nfa.delta, nfa.initStates, other.finStates)
+	// return NewNFA(nfa.q, nfa.sigma, nfa.delta, nfa.initStates, other.finStates)
+	return NewNFA(nfa.q, nfa.delta, nfa.initStates, other.finStates)
 }
 
 func (nfa NFA) Sum(other NFA) NFA {
@@ -96,9 +98,9 @@ func (nfa NFA) Sum(other NFA) NFA {
 		nfa.q.Insert(st)
 	}
 
-	for r := range other.sigma {
-		nfa.sigma.Insert(r)
-	}
+	// for r := range other.sigma {
+	// 	nfa.sigma.Insert(r)
+	// }
 
 	for tr, ss := range other.delta {
 		nfa.delta[tr] = ss
@@ -112,7 +114,8 @@ func (nfa NFA) Sum(other NFA) NFA {
 		nfa.finStates.Insert(st)
 	}
 
-	return NewNFA(nfa.q, nfa.sigma, nfa.delta, nfa.initStates, nfa.finStates)
+	// return NewNFA(nfa.q, nfa.sigma, nfa.delta, nfa.initStates, nfa.finStates)
+	return NewNFA(nfa.q, nfa.delta, nfa.initStates, nfa.finStates)
 }
 
 func (nfa NFA) Star() NFA {
@@ -129,7 +132,8 @@ func (nfa NFA) Star() NFA {
 		nfa.delta[NewTuple(from, epsilon)] = initStates
 	}
 
-	return NewNFA(nfa.q, nfa.sigma, nfa.delta, initStates, initStates)
+	// return NewNFA(nfa.q, nfa.sigma, nfa.delta, initStates, initStates)
+	return NewNFA(nfa.q, nfa.delta, initStates, initStates)
 }
 
 func (nfa NFA) ToDot() (string, error) {
@@ -165,7 +169,8 @@ func (nfa NFA) ToDot() (string, error) {
 			n.SetLabel(fmt.Sprintf("I%v", ii))
 			e.SetLabel(string(epsilon))
 			ii++
-		} else if nfa.finStates.Contains(s) {
+		}
+		if nfa.finStates.Contains(s) {
 			n.SetShape(cgraph.DoubleCircleShape)
 			n.SetLabel(fmt.Sprintf("F%v", fi))
 			fi++
