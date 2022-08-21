@@ -1,6 +1,8 @@
 package compile
 
-func Compile(regexp string) NFA {
+import "github.com/goropikari/golex/automaton"
+
+func Compile(regexp string) automaton.NFA {
 	lex := NewLexer(regexp)
 	tokens := lex.Scan()
 	parser := NewParser(tokens)

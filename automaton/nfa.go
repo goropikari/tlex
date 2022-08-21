@@ -1,4 +1,4 @@
-package compile
+package automaton
 
 import (
 	"bytes"
@@ -10,27 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/goropikari/golex/collection"
 )
-
-const epsilon = 'ε'
-
-type Transition map[Tuple[State, rune]]collection.Set[State]
-
-func (t Transition) Copy() Transition {
-	delta := make(Transition)
-	for k, v := range t {
-		delta[k] = v.Copy()
-	}
-
-	return delta
-}
-
-type State struct {
-	label string
-}
-
-func NewState(label string) State {
-	return State{label: label}
-}
 
 type NFA struct {
 	q collection.Set[State]
@@ -78,10 +57,10 @@ func (nfa NFA) Concat(other NFA) NFA {
 
 	for from := range nfa.finStates {
 		for to := range other.initStates {
-			if _, ok := nfa.delta[NewTuple(from, epsilon)]; ok {
-				nfa.delta[NewTuple(from, epsilon)].Insert(to)
+			if _, ok := nfa.delta[collection.NewTuple(from, epsilon)]; ok {
+				nfa.delta[collection.NewTuple(from, epsilon)].Insert(to)
 			} else {
-				nfa.delta[NewTuple(from, epsilon)] = collection.NewSet[State]().Insert(to)
+				nfa.delta[collection.NewTuple(from, epsilon)] = collection.NewSet[State]().Insert(to)
 			}
 		}
 	}
@@ -126,10 +105,10 @@ func (nfa NFA) Star() NFA {
 
 	nfa.q.Insert(startFinState)
 
-	nfa.delta[NewTuple(startFinState, epsilon)] = nfa.initStates
+	nfa.delta[collection.NewTuple(startFinState, epsilon)] = nfa.initStates
 
 	for from := range nfa.finStates {
-		nfa.delta[NewTuple(from, epsilon)] = initStates
+		nfa.delta[collection.NewTuple(from, epsilon)] = initStates
 	}
 
 	// return NewNFA(nfa.q, nfa.sigma, nfa.delta, initStates, initStates)
@@ -183,8 +162,8 @@ func (nfa NFA) ToDot() (string, error) {
 	}
 
 	for st, qs := range nfa.delta {
-		from := st.first
-		label := string(st.second)
+		from := st.First
+		label := string(st.Second)
 		for to := range qs {
 			e, err := graph.CreateEdge(label, nodes[from], nodes[to])
 			if err != nil {
