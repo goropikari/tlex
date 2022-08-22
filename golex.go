@@ -70,6 +70,19 @@ func convertNFA() {
 	fmt.Println(s)
 }
 
+func convertDFA() {
+	lex := compile.NewLexer("(a*|b)cde*|fghh*")
+	tokens := lex.Scan()
+	parser := compile.NewParser(tokens)
+	ast, _ := parser.Parse()
+	gen := compile.NewCodeGenerator()
+	ast.Accept(gen)
+
+	s, _ := gen.GetNFA().ToDFA().ToDot()
+	fmt.Println(s)
+}
+
 func main() {
-	convertNFA()
+	convertDFA()
+	// convertNFA()
 }

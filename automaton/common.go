@@ -22,3 +22,7 @@ type State struct {
 func NewState(label string) State {
 	return State{label: label}
 }
+
+func (st State) GetLabel() string {
+	return st.label
+}

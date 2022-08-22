@@ -6,6 +6,7 @@ require (
 	github.com/goccy/go-graphviz v0.0.9
 	github.com/google/uuid v1.3.0
 	github.com/stretchr/testify v1.8.0
+	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
 )
 
 require (

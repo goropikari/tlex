@@ -2,13 +2,16 @@ package automaton
 
 import (
 	"bytes"
+	"container/list"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
 	"github.com/google/uuid"
 	"github.com/goropikari/golex/collection"
+	"golang.org/x/exp/slices"
 )
 
 type NFA struct {
@@ -177,4 +180,111 @@ func (nfa NFA) ToDot() (string, error) {
 	g.Render(graph, "dot", &buf)
 
 	return buf.String(), nil
+}
+
+func (nfa NFA) ToDFA() DFA {
+	que := list.New()
+	memo := collection.NewSet[string]()
+	initStates := nfa.eClosureSet(nfa.initStates)
+	finStates := nfa.eClosureSet(nfa.finStates)
+	que.PushBack(initStates)
+	memo.Insert(labelConcat(initStates))
+
+	// sigma := collection.NewSet[rune]()
+	// for k := range nfa.delta {
+	// 	if k.Second != epsilon {
+	// 		sigma.Insert(k.Second)
+	// 	}
+	// }
+
+	// dfaInitStates := collection.NewSet[State]().Insert(NewState(labelConcat(initStates)))
+	dfaFinStates := collection.NewSet[State]()
+	if len(initStates.Intersection(finStates)) > 0 {
+		dfaFinStates.Insert(NewState(labelConcat(finStates)))
+	}
+	dfaDelta := make(Transition)
+
+	for que.Len() > 0 {
+		top := que.Front()
+		que.Remove(top)
+		froms := top.Value.(collection.Set[State])
+		fromLabel := labelConcat(froms)
+
+		for ru := rune('a'); ru <= 'z'; ru++ {
+			tos := collection.NewSet[State]()
+			for from := range froms {
+				if nx, ok := nfa.delta[collection.NewTuple(from, ru)]; ok {
+					tos = tos.Union(nfa.eClosureSet(nx))
+				}
+			}
+			if len(tos) == 0 {
+				continue
+			}
+			toLabel := labelConcat(tos)
+			if len(tos.Intersection(finStates)) > 0 {
+				dfaFinStates.Insert(NewState(toLabel))
+			}
+			dfaDelta[collection.NewTuple(NewState(fromLabel), ru)] = collection.NewSet[State]().Insert(NewState(toLabel))
+			if memo.Contains(toLabel) {
+				continue
+			}
+			memo.Insert(toLabel)
+			que.PushBack(tos)
+		}
+	}
+
+	q := collection.NewSet[State]()
+	for label := range memo {
+		q.Insert(NewState(label))
+	}
+
+	return DFA{
+		q:         q,
+		delta:     dfaDelta,
+		initState: NewState(labelConcat(initStates)),
+		finStates: dfaFinStates,
+	}
+}
+
+func (nfa NFA) eClosure(st State) collection.Set[State] {
+	que := list.New()
+	que.PushBack(st)
+	visited := collection.NewSet[State]().Insert(st)
+
+	closure := visited.Copy()
+	for que.Len() > 0 {
+		front := que.Front()
+		que.Remove(front)
+		top := front.Value.(State)
+
+		if nxs, ok := nfa.delta[collection.NewTuple(top, epsilon)]; ok {
+			closure = closure.Union(nxs)
+
+			for nx := range nxs {
+				if !visited.Contains(nx) {
+					visited.Insert(nx)
+					que.PushBack(nx)
+				}
+			}
+		}
+	}
+
+	return closure
+}
+
+func (nfa NFA) eClosureSet(sts collection.Set[State]) collection.Set[State] {
+	closure := collection.NewSet[State]()
+	for st := range sts {
+		closure = closure.Union(nfa.eClosure(st))
+	}
+	return closure
+}
+
+func labelConcat(set collection.Set[State]) string {
+	s := make([]string, 0, len(set))
+	for v := range set {
+		s = append(s, v.GetLabel())
+	}
+	slices.Sort(s)
+	return strings.Join(s, "_")
 }
