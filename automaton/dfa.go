@@ -71,13 +71,13 @@ func (dfa DFA) ToDot() (string, error) {
 
 	for st, qs := range dfa.delta {
 		from := st.First
-		label := string(st.Second)
+		symbol := string(st.Second)
 		for to := range qs {
-			e, err := graph.CreateEdge(label, nodes[from], nodes[to])
+			e, err := graph.CreateEdge(charLabel(symbol), nodes[from], nodes[to])
 			if err != nil {
 				return "", err
 			}
-			e.SetLabel(charLabel(label))
+			e.SetLabel(charLabel(symbol))
 		}
 	}
 
