@@ -13,6 +13,7 @@ type TokenType int
 
 const (
 	SymbolTokenType TokenType = iota + 1
+	DotTokenType
 	StarTokenType
 	LParenTokenType
 	RParenTokenType
@@ -113,6 +114,8 @@ func (lex *Lexer) Scan() []Token {
 			typ = RParenTokenType
 		case '|':
 			typ = BarTokenType
+		case '.':
+			typ = DotTokenType
 		default:
 			typ = SymbolTokenType
 		}

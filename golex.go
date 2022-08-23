@@ -59,7 +59,8 @@ func handMaid() {
 }
 
 func convertNFA() {
-	lex := compile.NewLexer("(a*|b)cde*|fghh*")
+	// lex := compile.NewLexer("(a*|b)cde*|fghh*")
+	lex := compile.NewLexer(" ")
 	tokens := lex.Scan()
 	parser := compile.NewParser(tokens)
 	ast, _ := parser.Parse()
@@ -71,7 +72,8 @@ func convertNFA() {
 }
 
 func convertDFA() {
-	lex := compile.NewLexer("(a*|b)cde*|fghh*")
+	// lex := compile.NewLexer("(a*|b)cde*|fghh*")
+	lex := compile.NewLexer(".")
 	tokens := lex.Scan()
 	parser := compile.NewParser(tokens)
 	ast, _ := parser.Parse()
@@ -83,6 +85,6 @@ func convertDFA() {
 }
 
 func main() {
-	convertDFA()
 	// convertNFA()
+	convertDFA()
 }

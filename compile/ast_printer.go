@@ -51,6 +51,12 @@ func (p *ASTPrinter) VisitSymbolExpr(expr SymbolExpr) {
 	p.str += s
 }
 
+func (p *ASTPrinter) VisitDotExpr(expr DotExpr) {
+	p.str += p.header("DotExpr")
+	s := fmt.Sprintf("%v%v\n", repTab(p.depth+1), ".")
+	p.str += s
+}
+
 func (p *ASTPrinter) header(name string) string {
 	s := repTab(p.depth)
 	s += name + "\n"

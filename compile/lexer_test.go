@@ -15,7 +15,7 @@ func TestLexer_Scan(t *testing.T) {
 	}{
 		{
 			name:  "lexer test",
-			regex: "a(b|c*)deあいう",
+			regex: "a(b|c*)deあいう\t\n",
 			expected: []compile.Token{
 				compile.NewToken(compile.SymbolTokenType, 'a'),
 				compile.NewToken(compile.LParenTokenType, '('),
@@ -29,6 +29,8 @@ func TestLexer_Scan(t *testing.T) {
 				compile.NewToken(compile.SymbolTokenType, 'あ'),
 				compile.NewToken(compile.SymbolTokenType, 'い'),
 				compile.NewToken(compile.SymbolTokenType, 'う'),
+				compile.NewToken(compile.SymbolTokenType, '\t'),
+				compile.NewToken(compile.SymbolTokenType, '\n'),
 			},
 		},
 	}

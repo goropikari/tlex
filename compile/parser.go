@@ -24,6 +24,7 @@ type NodeVisitor interface {
 	VisitConcatExpr(ConcatExpr)
 	VisitStarExpr(StarExpr)
 	VisitSymbolExpr(SymbolExpr)
+	VisitDotExpr(DotExpr)
 }
 
 type RegexExpr interface {
@@ -95,24 +96,17 @@ func (p *Parser) concat() (RegexExpr, error) {
 		}
 		return nil, err
 	}
-	// if b.GetType() == RParenTokenType {
-	// 	return lhs, nil
-	// }
-	// if b.GetType() != BarTokenType {
-	// 	rhs, err := p.sum()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	return NewConcatExpr(lhs, rhs), nil
-	// }
-	if b.GetType() == SymbolTokenType || b.GetType() == LParenTokenType {
+
+	switch b.GetType() {
+	case SymbolTokenType, DotTokenType, LParenTokenType:
 		rhs, err := p.concat()
 		if err != nil {
 			return nil, err
 		}
 		return NewConcatExpr(lhs, rhs), nil
+	default:
+		return lhs, nil
 	}
-	return lhs, nil
 }
 
 func (p *Parser) star() (RegexExpr, error) {
@@ -142,10 +136,14 @@ func (p *Parser) primary() (RegexExpr, error) {
 	if s.GetType() == SymbolTokenType {
 		return NewSymbolExpr(s.GetRune()), nil
 	}
+	if s.GetType() == DotTokenType {
+		return NewDotExpr(), nil
+	}
 	if s.GetType() != LParenTokenType {
 		return nil, ErrParse
 	}
 
+	// grouping expr
 	sum, err := p.sum()
 	if err != nil {
 		return nil, err
@@ -208,4 +206,15 @@ func NewSymbolExpr(sym rune) SymbolExpr {
 
 func (expr SymbolExpr) Accept(v NodeVisitor) {
 	v.VisitSymbolExpr(expr)
+}
+
+type DotExpr struct {
+}
+
+func NewDotExpr() DotExpr {
+	return DotExpr{}
+}
+
+func (expr DotExpr) Accept(v NodeVisitor) {
+	v.VisitDotExpr(expr)
 }

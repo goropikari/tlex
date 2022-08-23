@@ -15,7 +15,7 @@ func TestParser_Parse(t *testing.T) {
 	}{
 		{
 			name: "parser test",
-			tokens: []compile.Token{ // a(b|c*)deあいう|fg*hi
+			tokens: []compile.Token{ // a(b|c*)deあいう|fg*hi|.*
 				compile.NewToken(compile.SymbolTokenType, 'a'),
 				compile.NewToken(compile.LParenTokenType, '('),
 				compile.NewToken(compile.SymbolTokenType, 'b'),
@@ -34,6 +34,9 @@ func TestParser_Parse(t *testing.T) {
 				compile.NewToken(compile.StarTokenType, '*'),
 				compile.NewToken(compile.SymbolTokenType, 'h'),
 				compile.NewToken(compile.SymbolTokenType, 'i'),
+				compile.NewToken(compile.BarTokenType, '|'),
+				compile.NewToken(compile.DotTokenType, '.'),
+				compile.NewToken(compile.StarTokenType, '*'),
 			},
 			expected: `
 SumExpr
@@ -61,18 +64,22 @@ SumExpr
 								い
 							SymbolExpr
 								う
-	ConcatExpr
-		SymbolExpr
-			f
+	SumExpr
 		ConcatExpr
-			StarExpr
-				SymbolExpr
-					g
+			SymbolExpr
+				f
 			ConcatExpr
-				SymbolExpr
-					h
-				SymbolExpr
-					i
+				StarExpr
+					SymbolExpr
+						g
+				ConcatExpr
+					SymbolExpr
+						h
+					SymbolExpr
+						i
+		StarExpr
+			DotExpr
+				.
 `,
 		},
 	}
@@ -100,7 +107,7 @@ func TestParser_Lexer_Parse(t *testing.T) {
 	}{
 		{
 			name:  "lexer & parser test",
-			given: "a(b|c*)deあいう|fg*hi",
+			given: "a(b|c*)deあいう|fg*hi|.*|\t",
 			expected: `
 SumExpr
 	ConcatExpr
@@ -127,18 +134,22 @@ SumExpr
 								い
 							SymbolExpr
 								う
-	ConcatExpr
-		SymbolExpr
-			f
+	SumExpr
 		ConcatExpr
-			StarExpr
-				SymbolExpr
-					g
+			SymbolExpr
+				f
 			ConcatExpr
-				SymbolExpr
-					h
-				SymbolExpr
-					i
+				StarExpr
+					SymbolExpr
+						g
+				ConcatExpr
+					SymbolExpr
+						h
+					SymbolExpr
+						i
+		StarExpr
+			DotExpr
+				.
 `,
 		},
 	}

@@ -77,7 +77,7 @@ func (dfa DFA) ToDot() (string, error) {
 			if err != nil {
 				return "", err
 			}
-			e.SetLabel(label)
+			e.SetLabel(charLabel(label))
 		}
 	}
 

@@ -14,6 +14,8 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+const SupportedChars = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ \t\n\r"
+
 type NFA struct {
 	q collection.Set[State]
 	// sigma      collection.Set[rune]
@@ -172,7 +174,7 @@ func (nfa NFA) ToDot() (string, error) {
 			if err != nil {
 				return "", err
 			}
-			e.SetLabel(label)
+			e.SetLabel(charLabel(label))
 		}
 	}
 
@@ -190,13 +192,6 @@ func (nfa NFA) ToDFA() DFA {
 	que.PushBack(initStates)
 	memo.Insert(labelConcat(initStates))
 
-	// sigma := collection.NewSet[rune]()
-	// for k := range nfa.delta {
-	// 	if k.Second != epsilon {
-	// 		sigma.Insert(k.Second)
-	// 	}
-	// }
-
 	// dfaInitStates := collection.NewSet[State]().Insert(NewState(labelConcat(initStates)))
 	dfaFinStates := collection.NewSet[State]()
 	if len(initStates.Intersection(finStates)) > 0 {
@@ -210,7 +205,7 @@ func (nfa NFA) ToDFA() DFA {
 		froms := top.Value.(collection.Set[State])
 		fromLabel := labelConcat(froms)
 
-		for ru := rune('a'); ru <= 'z'; ru++ {
+		for _, ru := range SupportedChars {
 			tos := collection.NewSet[State]()
 			for from := range froms {
 				if nx, ok := nfa.delta[collection.NewTuple(from, ru)]; ok {

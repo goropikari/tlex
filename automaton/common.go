@@ -26,3 +26,20 @@ func NewState(label string) State {
 func (st State) GetLabel() string {
 	return st.label
 }
+
+func charLabel(s string) string {
+	switch s {
+	case "\t":
+		return "Tab"
+	case "\n":
+		return "Newline"
+	case "\r":
+		return "CR"
+	case " ":
+		return "Space"
+	case "\\":
+		return "Backslash"
+	default:
+		return s
+	}
+}

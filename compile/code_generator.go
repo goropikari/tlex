@@ -55,3 +55,24 @@ func (gen *CodeGenerator) VisitSymbolExpr(expr SymbolExpr) {
 		collection.NewSet[automaton.State]().Insert(to),
 	)
 }
+
+func (gen *CodeGenerator) VisitDotExpr(expr DotExpr) {
+	from := automaton.NewState(uuid.New().String())
+	trans := make(automaton.Transition)
+	states := collection.NewSet[automaton.State]().Insert(from)
+	finStates := collection.NewSet[automaton.State]()
+
+	for _, ru := range []rune(automaton.SupportedChars) {
+		to := automaton.NewState(uuid.New().String())
+		states = states.Insert(to)
+		finStates = finStates.Insert(to)
+		trans[collection.NewTuple(from, ru)] = collection.NewSet[automaton.State]().Insert(to)
+	}
+
+	gen.nfa = automaton.NewNFA(
+		states,
+		trans,
+		collection.NewSet[automaton.State]().Insert(from),
+		finStates,
+	)
+}
