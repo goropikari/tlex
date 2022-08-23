@@ -169,12 +169,7 @@ func (nfa NFA) ToDFA() DFA {
 		q.Insert(NewState(label))
 	}
 
-	return DFA{
-		q:         q,
-		delta:     dfaDelta,
-		initState: NewState(labelConcat(initStates)),
-		finStates: dfaFinStates,
-	}
+	return NewDFA(q, dfaDelta, NewState(labelConcat(initStates)), dfaFinStates)
 }
 
 func (nfa NFA) eClosure(st State) collection.Set[State] {

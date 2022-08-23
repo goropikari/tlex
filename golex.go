@@ -85,6 +85,6 @@ func convertDFA(regex string) {
 }
 
 func main() {
-	convertNFA("..")
-	// convertDFA(".a")
+	// convertNFA("..")
+	convertDFA(".a")
 }

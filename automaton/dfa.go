@@ -18,8 +18,13 @@ type DFA struct {
 	finStates collection.Set[State]
 }
 
-func NewDFA() DFA {
-	return DFA{}
+func NewDFA(q collection.Set[State], delta Transition, initState State, finStates collection.Set[State]) DFA {
+	return DFA{
+		q:         q,
+		delta:     delta,
+		initState: initState,
+		finStates: finStates,
+	}
 }
 
 func (dfa DFA) ToDot() (string, error) {
