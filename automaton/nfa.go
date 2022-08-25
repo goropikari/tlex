@@ -128,14 +128,13 @@ func (nfa NFA) ToDFA() DFA {
 	que := list.New()
 	memo := collection.NewSet[string]()
 	initStates := nfa.eClosureSet(nfa.initStates)
-	finStates := nfa.eClosureSet(nfa.finStates)
+	finStates := nfa.finStates
 	que.PushBack(initStates)
 	memo.Insert(labelConcat(initStates))
 
-	// dfaInitStates := collection.NewSet[State]().Insert(NewState(labelConcat(initStates)))
 	dfaFinStates := collection.NewSet[State]()
 	if len(initStates.Intersection(finStates)) > 0 {
-		dfaFinStates.Insert(NewState(labelConcat(finStates)))
+		dfaFinStates.Insert(NewState(labelConcat(initStates)))
 	}
 	dfaDelta := make(Transition)
 
