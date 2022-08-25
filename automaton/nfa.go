@@ -113,10 +113,14 @@ func (nfa NFA) Star() NFA {
 	nfa.delta[collection.NewTuple(startFinState, epsilon)] = nfa.initStates
 
 	for from := range nfa.finStates {
-		nfa.delta[collection.NewTuple(from, epsilon)] = initStates
+		pair := collection.NewTuple(from, epsilon)
+		if _, ok := nfa.delta[pair]; ok {
+			nfa.delta[pair].Insert(startFinState)
+		} else {
+			nfa.delta[pair] = initStates
+		}
 	}
 
-	// return NewNFA(nfa.q, nfa.sigma, nfa.delta, initStates, initStates)
 	return NewNFA(nfa.q, nfa.delta, initStates, initStates)
 }
 
