@@ -26,7 +26,7 @@ func (s Set[T]) Contains(x T) bool {
 func (s Set[T]) Difference(other Set[T]) Set[T] {
 	d := NewSet[T]()
 	for k := range s {
-		if _, ok := other[k]; !ok {
+		if !other.Contains(k) {
 			d.Insert(k)
 		}
 	}
@@ -36,7 +36,7 @@ func (s Set[T]) Difference(other Set[T]) Set[T] {
 func (s Set[T]) Intersection(other Set[T]) Set[T] {
 	i := NewSet[T]()
 	for k := range s {
-		if _, ok := other[k]; ok {
+		if other.Contains(k) {
 			i.Insert(k)
 		}
 	}

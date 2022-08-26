@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"log"
 
+	"github.com/goccy/go-graphviz"
 	"github.com/goropikari/golex/automaton"
 	"github.com/goropikari/golex/collection"
 	"github.com/goropikari/golex/compile"
@@ -58,6 +61,32 @@ func handMaid() {
 	fmt.Println(s)
 }
 
+func Dot() {
+	g := graphviz.New()
+	graph, _ := g.Graph()
+	defer func() {
+		if err := graph.Close(); err != nil {
+			log.Fatal(err)
+		}
+		g.Close()
+	}()
+	graph.SetRankDir("LR") // 図を横長にする
+
+	n, _ := graph.CreateNode("S0")
+	e1, _ := graph.CreateEdge("id", n, n)
+	e1.SetLabel("a\nb")
+	// graph.CreateEdge("bcb", n, n)
+	// e2.SetLabel("b")
+	// e2.SetID("b")
+	// e3, _ := graph.CreateEdge("c", n, n)
+	// e3.SetLabel("c")
+
+	var buf bytes.Buffer
+	g.Render(graph, "dot", &buf)
+
+	fmt.Println(buf.String())
+}
+
 func convertNFA(regex string) {
 	// lex := compile.NewLexer("(a*|b)cde*|fghh*")
 	lex := compile.NewLexer(regex)
@@ -80,11 +109,16 @@ func convertDFA(regex string) {
 	gen := compile.NewCodeGenerator()
 	ast.Accept(gen)
 
-	s, _ := gen.GetNFA().ToDFA().ToDot()
+	// s, _ := gen.GetNFA().ToDFA().Minimize().Totalize().ToDot()
+	s, _ := gen.GetNFA().ToDFA().Minimize().ToDot()
+	// s, _ := gen.GetNFA().ToDFA().Totalize().ToDot()
+	// s, _ := gen.GetNFA().ToDFA().ToDot()
+	// s, _ := gen.GetNFA().ToDFA().ToDot()
 	fmt.Println(s)
 }
 
 func main() {
-	// convertNFA("..")
-	convertDFA(".a")
+	regex := "ab|abab|a(a|b)b"
+	// convertNFA(regex)
+	convertDFA(regex)
 }

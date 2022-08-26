@@ -1,3 +1,6 @@
 golex
 *.dot
 *.png
+
+automaton/dp_minimization.go
+collection/union_find.go

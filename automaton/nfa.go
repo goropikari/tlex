@@ -9,17 +9,26 @@ import (
 
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
-	"github.com/google/uuid"
 	"github.com/goropikari/golex/collection"
+	"github.com/goropikari/golex/utils/guid"
 	"golang.org/x/exp/slices"
 )
 
-const SupportedChars = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ \t\n\r"
+type NFATransition map[collection.Tuple[State, rune]]collection.Set[State]
+
+func (t NFATransition) Copy() NFATransition {
+	delta := make(NFATransition)
+	for k, v := range t {
+		delta[k] = v.Copy()
+	}
+
+	return delta
+}
 
 type NFA struct {
 	q collection.Set[State]
 	// sigma      collection.Set[rune]
-	delta      Transition
+	delta      NFATransition
 	initStates collection.Set[State]
 	finStates  collection.Set[State]
 }
@@ -27,7 +36,7 @@ type NFA struct {
 func NewNFA(
 	q collection.Set[State],
 	// sigma collection.Set[rune],
-	delta Transition,
+	delta NFATransition,
 	initStates collection.Set[State],
 	finStates collection.Set[State]) NFA {
 	return NFA{
@@ -105,7 +114,7 @@ func (nfa NFA) Sum(other NFA) NFA {
 func (nfa NFA) Star() NFA {
 	nfa = nfa.Copy()
 
-	startFinState := NewState(uuid.New().String())
+	startFinState := NewState(guid.New())
 	initStates := collection.NewSet[State]().Insert(startFinState)
 
 	nfa.q.Insert(startFinState)
@@ -136,7 +145,7 @@ func (nfa NFA) ToDFA() DFA {
 	if len(initStates.Intersection(finStates)) > 0 {
 		dfaFinStates.Insert(NewState(labelConcat(initStates)))
 	}
-	dfaDelta := make(Transition)
+	dfaDelta := make(DFATransition)
 
 	for que.Len() > 0 {
 		top := que.Front()
@@ -158,7 +167,7 @@ func (nfa NFA) ToDFA() DFA {
 			if len(tos.Intersection(finStates)) > 0 {
 				dfaFinStates.Insert(NewState(toLabel))
 			}
-			dfaDelta[collection.NewTuple(NewState(fromLabel), ru)] = collection.NewSet[State]().Insert(NewState(toLabel))
+			dfaDelta[collection.NewTuple(NewState(fromLabel), ru)] = NewState(toLabel)
 			if memo.Contains(toLabel) {
 				continue
 			}
@@ -239,12 +248,12 @@ func (nfa NFA) ToDot() (string, error) {
 	nodes := make(map[State]*cgraph.Node)
 	ii, si, fi := 0, 0, 0
 	for s := range nfa.q {
-		n, err := graph.CreateNode(uuid.New().String()) // assign unique node id
+		n, err := graph.CreateNode(guid.New()) // assign unique node id
 		if err != nil {
 			return "", err
 		}
 		if nfa.initStates.Contains(s) {
-			e, err := graph.CreateEdge(uuid.New().String(), start, n)
+			e, err := graph.CreateEdge(guid.New(), start, n)
 			if err != nil {
 				return "", err
 			}

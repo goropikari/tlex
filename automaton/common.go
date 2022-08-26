@@ -1,19 +1,10 @@
 package automaton
 
-import "github.com/goropikari/golex/collection"
-
 const epsilon = 'ε'
 
-type Transition map[collection.Tuple[State, rune]]collection.Set[State]
+// const SupportedChars = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ \t\n\r"
 
-func (t Transition) Copy() Transition {
-	delta := make(Transition)
-	for k, v := range t {
-		delta[k] = v.Copy()
-	}
-
-	return delta
-}
+const SupportedChars = "ab"
 
 type State struct {
 	label string

@@ -1,9 +1,9 @@
 package compile
 
 import (
-	"github.com/google/uuid"
 	"github.com/goropikari/golex/automaton"
 	"github.com/goropikari/golex/collection"
+	"github.com/goropikari/golex/utils/guid"
 )
 
 type CodeGenerator struct {
@@ -42,12 +42,12 @@ func (gen *CodeGenerator) VisitStarExpr(expr StarExpr) {
 }
 
 func (gen *CodeGenerator) VisitSymbolExpr(expr SymbolExpr) {
-	from := automaton.NewState(uuid.New().String())
-	to := automaton.NewState(uuid.New().String())
+	from := automaton.NewState(guid.New())
+	to := automaton.NewState(guid.New())
 
 	gen.nfa = automaton.NewNFA(
 		collection.NewSet[automaton.State]().Insert(from).Insert(to),
-		automaton.Transition{
+		automaton.NFATransition{
 			// collection.NewTuple[automaton.State, rune](from, expr.sym): collection.NewSet[automaton.State]().Insert(to),
 			collection.NewTuple(from, expr.sym): collection.NewSet[automaton.State]().Insert(to),
 		},
@@ -57,13 +57,13 @@ func (gen *CodeGenerator) VisitSymbolExpr(expr SymbolExpr) {
 }
 
 func (gen *CodeGenerator) VisitDotExpr(expr DotExpr) {
-	from := automaton.NewState(uuid.New().String())
-	trans := make(automaton.Transition)
+	from := automaton.NewState(guid.New())
+	trans := make(automaton.NFATransition)
 	states := collection.NewSet[automaton.State]().Insert(from)
 	finStates := collection.NewSet[automaton.State]()
 
-	for _, ru := range []rune(automaton.SupportedChars) {
-		to := automaton.NewState(uuid.New().String())
+	for _, ru := range automaton.SupportedChars {
+		to := automaton.NewState(guid.New())
 		states = states.Insert(to)
 		finStates = finStates.Insert(to)
 		trans[collection.NewTuple(from, ru)] = collection.NewSet[automaton.State]().Insert(to)

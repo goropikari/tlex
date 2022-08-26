@@ -107,7 +107,7 @@ func TestParser_Lexer_Parse(t *testing.T) {
 	}{
 		{
 			name:  "lexer & parser test",
-			given: "a(b|c*)deあいう|fg*hi|.*|\t",
+			given: "a(b|c*)deあいう|fg*hi|.*",
 			expected: `
 SumExpr
 	ConcatExpr
@@ -150,6 +150,16 @@ SumExpr
 		StarExpr
 			DotExpr
 				.
+`,
+		},
+		{
+			name:  "lexer & parser test 2",
+			given: "(.*)*",
+			expected: `
+StarExpr
+	StarExpr
+		DotExpr
+			.
 `,
 		},
 	}
