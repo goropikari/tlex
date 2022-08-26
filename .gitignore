@@ -1,4 +1,5 @@
 golex
+.vscode
 *.dot
 *.png
 
