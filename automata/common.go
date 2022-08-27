@@ -1,4 +1,4 @@
-package automaton
+package automata
 
 import (
 	stdmath "math"

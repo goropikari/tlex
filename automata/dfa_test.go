@@ -1,10 +1,10 @@
-package automaton_test
+package automata_test
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/goropikari/golex/automaton"
+	"github.com/goropikari/golex/automata"
 	"github.com/goropikari/golex/compile"
 	"github.com/stretchr/testify/require"
 )
@@ -33,7 +33,7 @@ func TestDFA_Accept(t *testing.T) {
 		given  string
 		// expected
 		accept  bool
-		regexID automaton.TokenID
+		regexID automata.TokenID
 	}{
 		{
 			name:    "digits",
@@ -171,11 +171,11 @@ func TestDFA_Accept(t *testing.T) {
 	}
 }
 
-func lexerNFA(regexs []string) automaton.NFA {
-	nfas := make([]*automaton.NFA, 0)
+func lexerNFA(regexs []string) automata.NFA {
+	nfas := make([]*automata.NFA, 0)
 	for i, regex := range regexs {
 		nfa := parse(regex)
-		(&nfa).SetTokenID(automaton.TokenID(i + 1))
+		(&nfa).SetTokenID(automata.TokenID(i + 1))
 		nfas = append(nfas, &nfa)
 	}
 
@@ -187,7 +187,7 @@ func lexerNFA(regexs []string) automaton.NFA {
 	return nfa
 }
 
-func parse(regex string) automaton.NFA {
+func parse(regex string) automata.NFA {
 	lex := compile.NewLexer(regex)
 	tokens := lex.Scan()
 	parser := compile.NewParser(tokens)
