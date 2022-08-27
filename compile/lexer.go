@@ -59,7 +59,7 @@ func (lex *Lexer) peek() (rune, error) {
 // 	if lex.pos+1 >= lex.length {
 // 		return 0, io.EOF
 // 	}
-// 	return lex.data[lex.pos+1], nil
+// 	return lex.regexp[lex.pos+1], nil
 // }
 
 func (lex *Lexer) read() (rune, error) {
@@ -86,22 +86,13 @@ func (lex *Lexer) Scan() []Token {
 		var typ TokenType
 		switch ru {
 		case '\\':
-			// lex.advance()
 			ru2, err := lex.read()
 			if errors.Is(err, io.EOF) {
 				panic(ErrInvalidRegex)
 			}
 			switch ru2 {
-			case 'n':
-				ru = '\n'
-			case 't':
-				ru = '\t'
-			case 'r':
-				ru = '\r'
-			case '\\':
-				ru = '\\'
-			case '.':
-				ru = '.'
+			case '.', '+', '-', '*', '(', ')', '[', ']':
+				ru = ru2
 			default:
 				panic(ErrInvalidRegex)
 			}
