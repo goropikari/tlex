@@ -2,6 +2,7 @@ golex
 .vscode
 *.dot
 *.png
+*.pdf
 
 automaton/dp_minimization.go
 collection/union_find.go

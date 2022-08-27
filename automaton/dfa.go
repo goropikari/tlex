@@ -43,6 +43,27 @@ func NewDFA(q collection.Set[State], delta DFATransition, initState State, finSt
 	}
 }
 
+func (dfa DFA) Accept(s string) (TokenID, bool) {
+	currSt := dfa.initState
+
+	for _, ru := range []rune(s) {
+		currSt = dfa.Step(currSt, ru)
+		if currSt.GetLabel() == blackHole {
+			return 0, false
+		}
+		if (currSt == State{}) {
+			return 0, false
+		}
+	}
+
+	return currSt.GetTokenID(), dfa.finStates.Contains(currSt)
+}
+
+func (dfa DFA) Step(st State, ru rune) State {
+	pair := collection.NewTuple(st, ru)
+	return dfa.delta[pair]
+}
+
 func (dfa DFA) Copy() DFA {
 	return NewDFA(dfa.q.Copy(), dfa.delta.Copy(), dfa.initState, dfa.finStates.Copy())
 }
@@ -90,6 +111,21 @@ func (dfa DFA) Reverse() NFA {
 // Brzozowski DFA minimization algorithm
 func (dfa DFA) Minimize() DFA {
 	return dfa.Reverse().ToDFA().Reverse().ToDFA()
+}
+
+func (dfa DFA) RemoveBH() DFA {
+	dfa = dfa.Copy()
+
+	bhSt := NewState(blackHole)
+	dfa.q.Erase(bhSt)
+
+	for pair, to := range dfa.delta {
+		if to.GetLabel() == blackHole {
+			delete(dfa.delta, pair)
+		}
+	}
+
+	return dfa
 }
 
 type stateGroup struct {
@@ -168,10 +204,11 @@ func (dfa DFA) grouping() []*stateGroup {
 	}
 
 	ngrp := len(groups)
-	changed := true
-	for changed {
-		changed = false
+	isSplit := true
+	for isSplit {
+		isSplit = false
 
+		// old groups
 		oldStUF := newStateUnionFind(states)
 		for _, grp := range groups {
 			gss := grp.slice()
@@ -183,6 +220,7 @@ func (dfa DFA) grouping() []*stateGroup {
 			}
 		}
 
+		// new groups
 		newStUF := newStateUnionFind(states)
 		for _, grp := range groups {
 			gss := grp.slice()
@@ -197,6 +235,8 @@ func (dfa DFA) grouping() []*stateGroup {
 					for _, ru := range SupportedChars {
 						ns0 := dfa.delta[collection.NewTuple(s0, ru)]
 						ns1 := dfa.delta[collection.NewTuple(s1, ru)]
+						// If ns0 and ns1 belong to different groups, s0 and s1 belong to other groups.
+						// Then current group is split.
 						if oldStUF.find(ns0) != oldStUF.find(ns1) {
 							isSameGroup = false
 							break
@@ -223,9 +263,10 @@ func (dfa DFA) grouping() []*stateGroup {
 			newGroups = append(newGroups, NewGroup(group))
 		}
 
+		// If group splitting occurs, the number of groups is increasing.
 		if ngrp != len(newGroups) {
 			ngrp = len(newGroups)
-			changed = true
+			isSplit = true
 			groups = newGroups
 		}
 	}

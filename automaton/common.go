@@ -11,9 +11,11 @@ import (
 
 const epsilon = 'ε'
 
-// const SupportedChars = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ \t\n\r"
+const SupportedChars = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ \t\n\r"
 
-const SupportedChars = "ab"
+// const SupportedChars = "abcdefghijklmnopqrstuvwxyz+-*/.0123456789"
+
+// const SupportedChars = "abc"
 
 type TokenID int
 

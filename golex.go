@@ -149,8 +149,21 @@ func main() {
 	// convertNFA(regex)
 	// convertDFA(regex)
 
-	nfa := lexerNFA([]string{"a", "abb", "a*bb*"})
+	nfa := lexerNFA([]string{"a", "abb", "a*bb*", ".*"})
+	// letter := "(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z)"
+	// digit := "(0|1|2|3|4|5|6|7|8|9)"
+	// digits := digit + digit + "*"
+	// id := fmt.Sprintf("%v(%v|%v)*", letter, letter, digit)
+	// nfa := lexerNFA([]string{
+	// 	digits,
+	// 	"if|then|begin|end|func",
+	// 	id,
+	// 	"\\+|\\-|\\*|/",
+	// 	"( |\n|\t|\r)",
+	// 	"\\.",
+	// 	".",
+	// })
 	dfa := nfa.ToDFA().LexerMinimize()
-	s, _ := dfa.ToDot()
+	s, _ := dfa.RemoveBH().ToDot()
 	fmt.Println(s)
 }
