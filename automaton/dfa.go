@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"math"
 	"strings"
 
 	"github.com/goccy/go-graphviz"
@@ -91,6 +92,187 @@ func (dfa DFA) Minimize() DFA {
 	return dfa.Reverse().ToDFA().Reverse().ToDFA()
 }
 
+type stateGroup struct {
+	states collection.Set[State]
+}
+
+func NewGroup(states collection.Set[State]) *stateGroup {
+	return &stateGroup{states: states}
+}
+
+func (g *stateGroup) size() int {
+	return len(g.states)
+}
+
+func (g *stateGroup) slice() []State {
+	sts := make([]State, 0)
+	for st := range g.states {
+		sts = append(sts, st)
+	}
+
+	return sts
+}
+
+type stateUnionFind struct {
+	stToID map[State]int
+	idToSt map[int]State
+	uf     *collection.UnionFind
+}
+
+func newStateUnionFind(states []State) *stateUnionFind {
+	stToID := make(map[State]int)
+	idToSt := make(map[int]State)
+	id := 0
+	for _, st := range states {
+		stToID[st] = id
+		idToSt[id] = st
+		id++
+	}
+
+	return &stateUnionFind{
+		stToID: stToID,
+		idToSt: idToSt,
+		uf:     collection.NewUnionFind(len(states)),
+	}
+}
+
+func (uf *stateUnionFind) unite(x, y State) bool {
+	xid := uf.stToID[x]
+	yid := uf.stToID[y]
+	return uf.uf.Unite(xid, yid)
+}
+
+func (uf *stateUnionFind) find(x State) State {
+	id := uf.stToID[x]
+	return uf.idToSt[uf.uf.Find(id)]
+}
+
+// state minimization for lexical analyzer
+// Compilers: Principles, Techniques, and Tools, 2ed ed.,  ISBN 9780321486813 (Dragon book)
+// p.181 Algorithm 3.39
+// p.184 3.9.7 State Minimization in Lexical Analyzers
+func (dfa DFA) grouping() []*stateGroup {
+	states := dfa.q.Slice()
+
+	stateSets := make(map[TokenID]collection.Set[State])
+	for st := range dfa.q {
+		if _, ok := stateSets[st.GetTokenID()]; ok {
+			stateSets[st.GetTokenID()].Insert(st)
+		} else {
+			stateSets[st.GetTokenID()] = collection.NewSet[State]().Insert(st)
+		}
+	}
+	groups := make([]*stateGroup, 0, len(stateSets))
+	for _, group := range stateSets {
+		groups = append(groups, NewGroup(group))
+	}
+
+	ngrp := len(groups)
+	changed := true
+	for changed {
+		changed = false
+
+		oldStUF := newStateUnionFind(states)
+		for _, grp := range groups {
+			gss := grp.slice()
+			if len(gss) == 1 {
+				continue
+			}
+			for i := 0; i < len(gss); i++ {
+				oldStUF.unite(gss[0], gss[i])
+			}
+		}
+
+		newStUF := newStateUnionFind(states)
+		for _, grp := range groups {
+			gss := grp.slice()
+			if len(gss) == 1 {
+				continue
+			}
+			for i := 0; i < len(gss); i++ {
+				for j := i + 1; j < len(gss); j++ {
+					s0 := gss[i]
+					s1 := gss[j]
+					isSameGroup := true
+					for _, ru := range SupportedChars {
+						ns0 := dfa.delta[collection.NewTuple(s0, ru)]
+						ns1 := dfa.delta[collection.NewTuple(s1, ru)]
+						if oldStUF.find(ns0) != oldStUF.find(ns1) {
+							isSameGroup = false
+							break
+						}
+					}
+					if isSameGroup {
+						newStUF.unite(s0, s1)
+					}
+				}
+			}
+		}
+
+		newStateSets := make(map[State]collection.Set[State])
+		for _, st := range states {
+			leaderSt := newStUF.find(st)
+			if _, ok := newStateSets[leaderSt]; ok {
+				newStateSets[leaderSt].Insert(st)
+			} else {
+				newStateSets[leaderSt] = collection.NewSet[State]().Insert(st)
+			}
+		}
+		newGroups := make([]*stateGroup, 0)
+		for _, group := range newStateSets {
+			newGroups = append(newGroups, NewGroup(group))
+		}
+
+		if ngrp != len(newGroups) {
+			ngrp = len(newGroups)
+			changed = true
+			groups = newGroups
+		}
+	}
+
+	return groups
+}
+
+func (dfa DFA) LexerMinimize() DFA {
+	dfa = dfa.Totalize()
+	groups := dfa.grouping()
+	states := dfa.q.Slice()
+
+	uf := newStateUnionFind(states)
+	for _, g := range groups {
+		n := g.size()
+		if n == 1 {
+			continue
+		}
+		states := g.slice()
+		for i := 1; i < n; i++ {
+			uf.unite(states[0], states[i])
+		}
+	}
+
+	q := collection.NewSet[State]()
+	for st := range dfa.q {
+		q.Insert(uf.find(st))
+	}
+
+	initState := uf.find(dfa.initState)
+
+	delta := make(DFATransition)
+	for pair, ns := range dfa.delta {
+		from := uf.find(pair.First)
+		ru := pair.Second
+		ns = uf.find(ns)
+		delta[collection.NewTuple(from, ru)] = ns
+	}
+
+	finStates := collection.NewSet[State]()
+	for st := range dfa.finStates {
+		finStates.Insert(uf.find(st))
+	}
+
+	return NewDFA(q, delta, initState, finStates)
+}
+
 func (dfa DFA) ToDot() (string, error) {
 	g := graphviz.New()
 	graph, err := g.Graph()
@@ -111,7 +293,7 @@ func (dfa DFA) ToDot() (string, error) {
 	}
 	start.SetShape(cgraph.PointShape)
 	nodes := make(map[State]*cgraph.Node)
-	ii, si, fi := 0, 0, 0
+	si, fi := 0, 0
 	for s := range dfa.q {
 		n, err := graph.CreateNode(guid.New()) // assign unique node id
 		if err != nil {
@@ -122,19 +304,17 @@ func (dfa DFA) ToDot() (string, error) {
 			if err != nil {
 				return "", err
 			}
-			n.SetLabel(fmt.Sprintf("I%v", ii))
 			e.SetLabel(string("start"))
-			ii++
 		}
 		if dfa.finStates.Contains(s) {
 			n.SetShape(cgraph.DoubleCircleShape)
-			n.SetLabel(fmt.Sprintf("F%v", fi))
+			n.SetLabel(fmt.Sprintf("F%v_%v", fi, toStateTokenID(s.GetTokenID())))
 			fi++
 		} else if s.GetLabel() == blackHole {
 			n.SetLabel(blackHole)
 		} else {
 			n.SetShape(cgraph.CircleShape)
-			n.SetLabel(fmt.Sprintf("S%v", si))
+			n.SetLabel(fmt.Sprintf("S%v_%v", si, toStateTokenID(s.GetTokenID())))
 			si++
 		}
 		nodes[s] = n
@@ -161,4 +341,12 @@ func (dfa DFA) ToDot() (string, error) {
 	g.Render(graph, "dot", &buf)
 
 	return buf.String(), nil
+}
+
+func toStateTokenID(id TokenID) TokenID {
+	if id == TokenID(math.MaxInt) {
+		return 0
+	}
+
+	return id
 }

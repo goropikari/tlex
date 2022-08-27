@@ -110,15 +110,47 @@ func convertDFA(regex string) {
 	ast.Accept(gen)
 
 	// s, _ := gen.GetNFA().ToDFA().Minimize().Totalize().ToDot()
-	s, _ := gen.GetNFA().ToDFA().Minimize().ToDot()
+	// s, _ := gen.GetNFA().ToDFA().Minimize().ToDot()
 	// s, _ := gen.GetNFA().ToDFA().Totalize().ToDot()
-	// s, _ := gen.GetNFA().ToDFA().ToDot()
+	s, _ := gen.GetNFA().ToDFA().ToDot()
 	// s, _ := gen.GetNFA().ToDFA().ToDot()
 	fmt.Println(s)
 }
 
+func parse(regex string) automaton.NFA {
+	lex := compile.NewLexer(regex)
+	tokens := lex.Scan()
+	parser := compile.NewParser(tokens)
+	ast, _ := parser.Parse()
+	gen := compile.NewCodeGenerator()
+	ast.Accept(gen)
+
+	return gen.GetNFA()
+}
+
+func lexerNFA(regexs []string) automaton.NFA {
+	nfas := make([]*automaton.NFA, 0)
+	for i, regex := range regexs {
+		nfa := parse(regex)
+		(&nfa).SetTokenID(automaton.TokenID(i + 1))
+		nfas = append(nfas, &nfa)
+	}
+
+	nfa := *nfas[0]
+	for _, n := range nfas[1:] {
+		nfa = nfa.Sum(*n)
+	}
+
+	return nfa
+}
+
 func main() {
-	regex := "ab|abab|a(a|b)b"
+	// regex := "a"
 	// convertNFA(regex)
-	convertDFA(regex)
+	// convertDFA(regex)
+
+	nfa := lexerNFA([]string{"a", "abb", "a*bb*"})
+	dfa := nfa.ToDFA().LexerMinimize()
+	s, _ := dfa.ToDot()
+	fmt.Println(s)
 }

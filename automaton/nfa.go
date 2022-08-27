@@ -5,13 +5,11 @@ import (
 	"container/list"
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
 	"github.com/goropikari/golex/collection"
 	"github.com/goropikari/golex/utils/guid"
-	"golang.org/x/exp/slices"
 )
 
 type NFATransition map[collection.Tuple[State, rune]]collection.Set[State]
@@ -31,6 +29,7 @@ type NFA struct {
 	delta      NFATransition
 	initStates collection.Set[State]
 	finStates  collection.Set[State]
+	tokenID    TokenID
 }
 
 func NewNFA(
@@ -45,11 +44,11 @@ func NewNFA(
 		delta:      delta,
 		initStates: initStates,
 		finStates:  finStates,
+		tokenID:    0,
 	}
 }
 
 func (nfa NFA) Copy() NFA {
-	// return NewNFA(nfa.q.Copy(), nfa.sigma.Copy(), nfa.delta.Copy(), nfa.initStates.Copy(), nfa.finStates.Copy())
 	return NewNFA(nfa.q.Copy(), nfa.delta.Copy(), nfa.initStates.Copy(), nfa.finStates.Copy())
 }
 
@@ -60,10 +59,6 @@ func (nfa NFA) Concat(other NFA) NFA {
 	for st := range other.q {
 		nfa.q.Insert(st)
 	}
-
-	// for r := range other.sigma {
-	// 	nfa.sigma.Insert(r)
-	// }
 
 	for tr, ss := range other.delta {
 		nfa.delta[tr] = ss
@@ -79,7 +74,6 @@ func (nfa NFA) Concat(other NFA) NFA {
 		}
 	}
 
-	// return NewNFA(nfa.q, nfa.sigma, nfa.delta, nfa.initStates, other.finStates)
 	return NewNFA(nfa.q, nfa.delta, nfa.initStates, other.finStates)
 }
 
@@ -90,10 +84,6 @@ func (nfa NFA) Sum(other NFA) NFA {
 	for st := range other.q {
 		nfa.q.Insert(st)
 	}
-
-	// for r := range other.sigma {
-	// 	nfa.sigma.Insert(r)
-	// }
 
 	for tr, ss := range other.delta {
 		nfa.delta[tr] = ss
@@ -107,7 +97,6 @@ func (nfa NFA) Sum(other NFA) NFA {
 		nfa.finStates.Insert(st)
 	}
 
-	// return NewNFA(nfa.q, nfa.sigma, nfa.delta, nfa.initStates, nfa.finStates)
 	return NewNFA(nfa.q, nfa.delta, nfa.initStates, nfa.finStates)
 }
 
@@ -135,15 +124,15 @@ func (nfa NFA) Star() NFA {
 
 func (nfa NFA) ToDFA() DFA {
 	que := list.New()
-	memo := collection.NewSet[string]()
 	initStates := nfa.eClosureSet(nfa.initStates)
-	finStates := nfa.finStates
 	que.PushBack(initStates)
-	memo.Insert(labelConcat(initStates))
+	finStates := nfa.finStates
+	dfaInitStates := NewStateSet(initStates)
+	memo := collection.NewSet[State]().Insert(dfaInitStates)
 
 	dfaFinStates := collection.NewSet[State]()
 	if len(initStates.Intersection(finStates)) > 0 {
-		dfaFinStates.Insert(NewState(labelConcat(initStates)))
+		dfaFinStates.Insert(dfaInitStates)
 	}
 	dfaDelta := make(DFATransition)
 
@@ -151,7 +140,6 @@ func (nfa NFA) ToDFA() DFA {
 		top := que.Front()
 		que.Remove(top)
 		froms := top.Value.(collection.Set[State])
-		fromLabel := labelConcat(froms)
 
 		for _, ru := range SupportedChars {
 			tos := collection.NewSet[State]()
@@ -163,25 +151,25 @@ func (nfa NFA) ToDFA() DFA {
 			if len(tos) == 0 {
 				continue
 			}
-			toLabel := labelConcat(tos)
+			to := NewStateSet(tos)
 			if len(tos.Intersection(finStates)) > 0 {
-				dfaFinStates.Insert(NewState(toLabel))
+				dfaFinStates.Insert(to)
 			}
-			dfaDelta[collection.NewTuple(NewState(fromLabel), ru)] = NewState(toLabel)
-			if memo.Contains(toLabel) {
+			dfaDelta[collection.NewTuple(NewStateSet(froms), ru)] = to
+			if memo.Contains(to) {
 				continue
 			}
-			memo.Insert(toLabel)
+			memo.Insert(to)
 			que.PushBack(tos)
 		}
 	}
 
 	q := collection.NewSet[State]()
-	for label := range memo {
-		q.Insert(NewState(label))
+	for st := range memo {
+		q.Insert(st)
 	}
 
-	return NewDFA(q, dfaDelta, NewState(labelConcat(initStates)), dfaFinStates)
+	return NewDFA(q, dfaDelta, dfaInitStates, dfaFinStates)
 }
 
 func (nfa NFA) eClosure(st State) collection.Set[State] {
@@ -218,13 +206,50 @@ func (nfa NFA) eClosureSet(sts collection.Set[State]) collection.Set[State] {
 	return closure
 }
 
-func labelConcat(set collection.Set[State]) string {
-	s := make([]string, 0, len(set))
-	for v := range set {
-		s = append(s, v.GetLabel())
+func (nfa *NFA) SetTokenID(id TokenID) {
+	nfa2 := nfa.Copy()
+
+	q := collection.NewSet[State]()
+	initStates := collection.NewSet[State]()
+	finStates := collection.NewSet[State]()
+	delta := make(NFATransition)
+
+	for st := range nfa2.q {
+		if nfa.finStates.Contains(st) {
+			st.SetTokenID(id)
+		}
+		q.Insert(st)
 	}
-	slices.Sort(s)
-	return strings.Join(s, "_")
+	for st := range nfa2.initStates {
+		if nfa.finStates.Contains(st) {
+			st.SetTokenID(id)
+		}
+		initStates.Insert(st)
+	}
+	for st := range nfa2.finStates {
+		st.SetTokenID(id)
+		finStates.Insert(st)
+	}
+	for pair, sts := range nfa2.delta {
+		from := pair.First
+		if nfa.finStates.Contains(from) {
+			from.SetTokenID(id)
+		}
+		ru := pair.Second
+		nss := collection.NewSet[State]()
+		for to := range sts {
+			if nfa.finStates.Contains(to) {
+				to.SetTokenID(id)
+			}
+			nss.Insert(to)
+		}
+		delta[collection.NewTuple(from, ru)] = nss
+	}
+
+	nfa2 = NewNFA(q, delta, initStates, finStates)
+	nfa2.tokenID = id
+
+	*nfa = nfa2
 }
 
 func (nfa NFA) ToDot() (string, error) {

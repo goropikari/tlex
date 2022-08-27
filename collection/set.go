@@ -61,3 +61,12 @@ func (s Set[T]) Copy() Set[T] {
 	}
 	return t
 }
+
+func (s Set[T]) Slice() []T {
+	ss := make([]T, 0, len(s))
+	for v := range s {
+		ss = append(ss, v)
+	}
+
+	return ss
+}
