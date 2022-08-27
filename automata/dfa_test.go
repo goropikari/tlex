@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/goropikari/golex/automata"
-	"github.com/goropikari/golex/compile"
+	"github.com/goropikari/golex/compile/regexp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -188,11 +188,11 @@ func lexerNFA(regexs []string) automata.NFA {
 }
 
 func parse(regex string) automata.NFA {
-	lex := compile.NewLexer(regex)
+	lex := regexp.NewLexer(regex)
 	tokens := lex.Scan()
-	parser := compile.NewParser(tokens)
+	parser := regexp.NewParser(tokens)
 	ast, _ := parser.Parse()
-	gen := compile.NewCodeGenerator()
+	gen := regexp.NewCodeGenerator()
 	ast.Accept(gen)
 
 	return gen.GetNFA()

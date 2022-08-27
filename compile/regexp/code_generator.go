@@ -1,4 +1,4 @@
-package compile
+package regexp
 
 import (
 	"github.com/goropikari/golex/automata"
@@ -48,7 +48,6 @@ func (gen *CodeGenerator) VisitSymbolExpr(expr SymbolExpr) {
 	gen.nfa = automata.NewNFA(
 		collection.NewSet[automata.State]().Insert(from).Insert(to),
 		automata.NFATransition{
-			// collection.NewTuple[automata.State, rune](from, expr.sym): collection.NewSet[automata.State]().Insert(to),
 			collection.NewTuple(from, expr.sym): collection.NewSet[automata.State]().Insert(to),
 		},
 		collection.NewSet[automata.State]().Insert(from),
