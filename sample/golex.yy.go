@@ -1,20 +1,19 @@
-package lexer
-
-// dfa から生成される Lexer の想像図
+package main
 
 import (
 	"errors"
 	"fmt"
+	"log"
 )
 
-// embedded code がここに入る
+type Type = int
+
 const (
-	Keyword int = iota + 1
-	Digit
-	Identifier
+	State1 Type = iota + 1
+	State2
+	State3
+	Other
 )
-
-// embedded code 終わり
 
 type yyStateID = int
 type yyRegexID = int
@@ -28,19 +27,19 @@ var (
 // 生成する
 // state id to regex id
 var yyStateIDToRegexID = []yyRegexID{
-	0, // state0 は BH state
-	0, // 1
-	1, // 2
-	0, // 3
-	3, // 4
-	3, // 5
-	2, // 6
+	0, // state 0 は BH state
+	0,
+	2,
+	1,
+	0,
+	3,
+	3,
 }
 
 // 生成する
 var yyFinStates = map[yyStateID]struct{}{
 	2: {},
-	4: {},
+	3: {},
 	5: {},
 	6: {},
 }
@@ -48,25 +47,25 @@ var yyFinStates = map[yyStateID]struct{}{
 // 生成する
 var yyTransitionTable = map[yyStateID]map[rune]yyStateID{
 	1: {
-		'a': 2,
-		'b': 4,
+		97: 3,
+		98: 6,
 	},
 	2: {
-		'a': 3,
-		'b': 5,
+		98: 6,
 	},
 	3: {
-		'a': 3,
-		'b': 4,
+		97: 4,
+		98: 5,
 	},
 	4: {
-		'b': 4,
+		97: 4,
+		98: 6,
 	},
 	5: {
-		'b': 6,
+		98: 2,
 	},
 	6: {
-		'b': 4,
+		98: 6,
 	},
 }
 
@@ -98,7 +97,7 @@ func New(data string) *yyLexer {
 		finPos:      0,
 		currPos:     0,
 		finRegexID:  0,
-		currStateID: 1, // ここは後で埋め込む or init state id を 1 になるようにする
+		currStateID: 1, // init state id を 1 になるようにする
 	}
 }
 
@@ -111,6 +110,7 @@ func (yylex *yyLexer) currRune() rune {
 }
 
 func (yylex *yyLexer) Next() (int, error) {
+start:
 	if yylex.currPos >= yylex.length {
 		return 0, EOF
 	}
@@ -129,25 +129,27 @@ func (yylex *yyLexer) Next() (int, error) {
 			switch regexID {
 			case 0:
 				return 0, ErrYYScan
-			case 1: // case 1 以降は生成する
+			case 1:
 				{
-					// 埋め込み
-					fmt.Println("state: 1")
-					return Keyword, nil
+					return State1, nil
 				}
+				goto start
 			case 2:
 				{
-					// 埋め込み
-					fmt.Println("state: 2")
-					return Digit, nil
+					return State2, nil
 				}
+				goto start
 			case 3:
 				{
-					// 埋め込み
-					fmt.Println("state: 3")
-					return Identifier, nil
+					return State3, nil
 				}
-				// ... regex pattern の数だけ生成
+				goto start
+			case 4:
+				{
+					return Other, nil
+				}
+				goto start
+
 			default:
 				return 0, ErrYYScan
 			}
@@ -161,4 +163,25 @@ func (yylex *yyLexer) Next() (int, error) {
 	}
 
 	return 0, ErrYYScan
+}
+
+func main() {
+	lex := New("ababba")
+	for {
+		n, err := lex.Next()
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		switch n {
+		case State1:
+			fmt.Println(State1, YYtext)
+		case State2:
+			fmt.Println(State2, YYtext)
+		case State3:
+			fmt.Println(State3, YYtext)
+		default:
+			fmt.Println(n, YYtext)
+		}
+	}
 }

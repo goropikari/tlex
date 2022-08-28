@@ -1,33 +1,44 @@
 
-{%
-import "fmt"
-
-var NumLines = 0
-var NumChars = 0
+%{
+import (
+    "fmt"
+    "log"
+)
 
 type Type = int
 const (
-    Newline Type = iota + 1
-    Char
-    DoubleQuote
-    Identifier
+    State1 Type = iota + 1
+    State2
+    State3
+    Other
 )
 
-type Token struct {
-    text string
-    typ  Type
-}
-
-type ReturnType = Token
 %}
 
 %%
-
-"\n"      { NumLines++; NumChars++; }
-"\""      { fmt.Println("double quote") }
-"."       { NumChars++; fmt.Println(NumChars) }
-"[a-z]+"  {
-    NumChars += len(yytext)
-    return Token{text: yytext, typ: Identifier}, nil
-}
+"a"      {  return State1, nil }
+"abb"      {  return State2, nil }
+"a*bb*"       {  return State3, nil }
+"ab" { return Other, nil }
 %%
+
+func main() {
+    lex := New("ababba")
+    for {
+        n, err := lex.Next()
+        if err != nil {
+            log.Fatal(err)
+            return
+        }
+        switch n {
+        case State1:
+            fmt.Println(State1, YYtext)
+        case State2:
+            fmt.Println(State2, YYtext)
+        case State3:
+            fmt.Println(State3, YYtext)
+        default:
+            fmt.Println(n, YYtext)
+        }
+    }
+}

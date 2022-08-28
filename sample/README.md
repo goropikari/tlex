@@ -1,15 +1,37 @@
+```bash
+$ go install github.com/goropikari/golex@v0.2.0
+$ golex sample.l
+$ go run golex.yy.go
+
+2 abb
+3 ab
+1 a
+1 a
+1 a
 ```
-$ go install github.com/goropikari/golex@latest
-$ golex sample.l lex/gen.go
-$ printf 'foo "a \nbar\nbaz\n' | go run main.go
-output:
-        {foo 4}
-4
-double quote
-5
-6
-        {bar 4}
-        {baz 4}
-15 3
+
+
+`golex.yy.go`
+```go
+// "a"      {  return State1, nil }
+// "abb"      {  return State2, nil }
+// "a*bb*"       {  return State3, nil }
+
+func main() {
+    lex := New("abbabaaa")
+    for {
+        n, err := lex.Next()
+        if err != nil {
+            return
+        }
+        switch n {
+        case State1:
+            fmt.Println(State1, YYtext)
+        case State2:
+            fmt.Println(State2, YYtext)
+        case State3:
+            fmt.Println(State3, YYtext)
+        }
+    }
+}
 ```
-`a` doesn't match `[a-z]+` because `.` is higher precedence than `[a-z]+` for single character.
