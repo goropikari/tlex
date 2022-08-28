@@ -1,4 +1,4 @@
-package golex
+package lex
 
 const tmpl = `
 package {{ .PackageName }}

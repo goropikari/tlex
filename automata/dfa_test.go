@@ -8,7 +8,7 @@ import (
 
 	"github.com/goccy/go-graphviz"
 	"github.com/goropikari/golex/automata"
-	"github.com/goropikari/golex/compile/regexp"
+	"github.com/goropikari/golex/compiler/regexp"
 	"github.com/stretchr/testify/require"
 )
 

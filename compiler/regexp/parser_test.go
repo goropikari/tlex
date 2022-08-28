@@ -3,7 +3,7 @@ package regexp_test
 import (
 	"testing"
 
-	"github.com/goropikari/golex/compile/regexp"
+	"github.com/goropikari/golex/compiler/regexp"
 	"github.com/stretchr/testify/require"
 )
 

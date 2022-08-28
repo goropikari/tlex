@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/goropikari/golex/compile/golex"
+	"github.com/goropikari/golex/compiler/lex"
 )
 
 var (
@@ -26,5 +26,5 @@ func main() {
 		log.Fatal(err)
 	}
 	r := bufio.NewReader(f)
-	golex.Generate(r, pkgName, outfile)
+	lex.Generate(r, pkgName, outfile)
 }

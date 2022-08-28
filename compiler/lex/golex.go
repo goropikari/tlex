@@ -1,4 +1,4 @@
-package golex
+package lex
 
 import (
 	"bufio"
@@ -11,7 +11,7 @@ import (
 
 	"github.com/goropikari/golex/automata"
 	"github.com/goropikari/golex/collection"
-	"github.com/goropikari/golex/compile/regexp"
+	"github.com/goropikari/golex/compiler/regexp"
 	"golang.org/x/tools/imports"
 )
 
