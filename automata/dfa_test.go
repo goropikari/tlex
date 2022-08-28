@@ -2,8 +2,11 @@ package automata_test
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"testing"
 
+	"github.com/goccy/go-graphviz"
 	"github.com/goropikari/golex/automata"
 	"github.com/goropikari/golex/compile/regexp"
 	"github.com/stretchr/testify/require"
@@ -168,6 +171,26 @@ func TestDFA_Accept(t *testing.T) {
 			require.Equal(t, tt.accept, accept)
 			require.Equal(t, tt.regexID, regexID)
 		})
+	}
+}
+
+func TestDot(t *testing.T) {
+	// generate dot file
+	// go test ./automata/ -run TestDot
+
+	s, _ := lexerNFA([]string{"a", "abb", "a*bb*"}).ToDFA().LexerMinimize().RemoveBH().ToDot()
+	err := os.WriteFile("ex.dot", []byte(s), 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	graph, err := graphviz.ParseBytes([]byte(s))
+	if err != nil {
+		log.Fatal(err)
+	}
+	g := graphviz.New()
+	if err := g.RenderFilename(graph, graphviz.PNG, "ex.png"); err != nil {
+		log.Fatal(err)
 	}
 }
 

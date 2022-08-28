@@ -25,7 +25,7 @@ type LexerTemplate struct {
 	UserCodeTmpl         string
 }
 
-func Generate(r *bufio.Reader) {
+func Generate(r *bufio.Reader, pkgName string, outfile string) {
 	parser := NewParser(r)
 	def, rules, userCode := parser.Parse()
 
@@ -60,7 +60,7 @@ func Generate(r *bufio.Reader) {
 	userCodeTmpl := userCode
 
 	lexCfg := LexerTemplate{
-		PackageName:          "main",
+		PackageName:          pkgName,
 		EmbeddedTmpl:         embeddedTmpl,
 		StateIDToRegexIDTmpl: stateIDToRegexIDTmpl,
 		FinStatesTmpl:        finStatesTmpl,
@@ -76,7 +76,7 @@ func Generate(r *bufio.Reader) {
 		panic(err)
 	}
 
-	outfile := "golex.yy.go"
+	// outfile := "golex.yy.go"
 	f, err := os.OpenFile(outfile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Fatal(err)

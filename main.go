@@ -2,46 +2,29 @@ package main
 
 import (
 	"bufio"
+	"flag"
+	"log"
 	"os"
 
-	"github.com/goropikari/golex/automata"
 	"github.com/goropikari/golex/compile/golex"
-	"github.com/goropikari/golex/compile/regexp"
+)
+
+var (
+	pkgName string
+	srcfile string
+	outfile string
 )
 
 func main() {
-	f, _ := os.OpenFile(os.Args[1], os.O_RDONLY, 0755)
-	// f, _ := os.OpenFile("sample/sample.l", os.O_RDONLY, 0755)
+	flag.StringVar(&pkgName, "pkg", "main", "generated go file package name")
+	flag.StringVar(&srcfile, "src", "sample.l", "input lexer cinfiguration file")
+	flag.StringVar(&outfile, "o", "golex.yy.go", "generated file path")
+	flag.Parse()
+
+	f, err := os.OpenFile(srcfile, os.O_RDONLY, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
 	r := bufio.NewReader(f)
-	golex.Generate(r)
-
-	// s, _ := lexerNFA([]string{"a", "abb", "a*bb*"}).ToDFA().LexerMinimize().RemoveBH().ToDot()
-	// fmt.Println(s)
-}
-
-func parse(regex string) automata.NFA {
-	lex := regexp.NewLexer(regex)
-	tokens := lex.Scan()
-	parser := regexp.NewParser(tokens)
-	ast, _ := parser.Parse()
-	gen := regexp.NewCodeGenerator()
-	ast.Accept(gen)
-
-	return gen.GetNFA()
-}
-
-func lexerNFA(regexs []string) automata.NFA {
-	nfas := make([]*automata.NFA, 0)
-	for i, regex := range regexs {
-		nfa := parse(regex)
-		(&nfa).SetTokenID(automata.TokenID(i + 1))
-		nfas = append(nfas, &nfa)
-	}
-
-	nfa := *nfas[0]
-	for _, n := range nfas[1:] {
-		nfa = nfa.Sum(*n)
-	}
-
-	return nfa
+	golex.Generate(r, pkgName, outfile)
 }
