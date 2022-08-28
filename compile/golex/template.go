@@ -19,24 +19,20 @@ var (
 	EOF       = errors.New("EOF")
 )
 
-// 生成する
 // state id to regex id
 var yyStateIDToRegexID = []yyRegexID{
 	0, // state 0 は BH state
     {{ .StateIDToRegexIDTmpl }}
 }
 
-// 生成する
 var yyFinStates = map[yyStateID]struct{}{
     {{ .FinStatesTmpl }}
 }
 
-// 生成する
 var yyTransitionTable = map[yyStateID]map[rune]yyStateID{
     {{ .TransitionTableTmpl }}
 }
 
-// ここは固定値
 func yyNextStep(id yyStateID, ru rune) yyStateID {
 	if mp, ok := yyTransitionTable[id]; ok {
 		return mp[ru]
@@ -64,7 +60,7 @@ func New(data string) *yyLexer {
 		finPos:      0,
 		currPos:     0,
 		finRegexID:  0,
-		currStateID: 1, // init state id を 1 になるようにする
+		currStateID: 1, // init state id is 1.
 	}
 }
 
