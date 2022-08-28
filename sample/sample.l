@@ -1,4 +1,3 @@
-
 %{
 import (
     "fmt"
@@ -7,23 +6,40 @@ import (
 
 type Type = int
 const (
-    State1 Type = iota + 1
-    State2
-    State3
-    Other
+    Keyword Type = iota + 1
+    Identifier
+    Digit
+    Whitespace
+    LParen
+    RParen
+    LBracket
+    RBracket
+    Operator
 )
 
 %}
 
 %%
-"a"      {  return State1, nil }
-"abb"      {  return State2, nil }
-"a*bb*"       {  return State3, nil }
-"ab" { return Other, nil }
+"if|for|while|func|return" { return Keyword, nil }
+"[a-zA-Z][a-zA-Z0-9]*" { return Identifier, nil }
+"[1-9][0-9]*" { return Digit, nil }
+"[ \t\n\r]*" { }
+"\\(" { return LParen, nil }
+"\\)" { return RParen, nil }
+"{" { return LBracket, nil }
+"}" { return RBracket, nil }
+"\\+|\\-|\\*|/|:=|==|!=" { return Operator, nil }
+"." {}
 %%
 
 func main() {
-    lex := New("ababba")
+    lex := New(`
+func foo000() int {
+    x := 1 * 10 + 123 - 1000 / 5432
+
+    return x
+}
+`)
     for {
         n, err := lex.Next()
         if err != nil {
@@ -31,14 +47,25 @@ func main() {
             return
         }
         switch n {
-        case State1:
-            fmt.Println(State1, YYtext)
-        case State2:
-            fmt.Println(State2, YYtext)
-        case State3:
-            fmt.Println(State3, YYtext)
-        default:
-            fmt.Println(n, YYtext)
+        case Keyword:
+            fmt.Println("Keyword")
+        case Identifier:
+            fmt.Println("Identifier")
+        case Digit:
+            fmt.Println("Digit")
+        case Whitespace:
+            fmt.Println("Whitespace")
+        case LParen:
+            fmt.Println("LParen")
+        case RParen:
+            fmt.Println("RParen")
+        case LBracket:
+            fmt.Println("LBracket")
+        case RBracket:
+            fmt.Println("RBracket")
+        case Operator:
+            fmt.Println("Operator")
         }
+        fmt.Printf("\t %#v\n",YYtext)
     }
 }

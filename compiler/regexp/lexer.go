@@ -15,9 +15,13 @@ const (
 	SymbolTokenType TokenType = iota + 1
 	DotTokenType
 	StarTokenType
+	MinusTokenType
 	LParenTokenType
 	RParenTokenType
+	LSqBracketTokenType
+	RSqBracketTokenType
 	BarTokenType
+	NegationTokenType
 )
 
 type Token struct {
@@ -99,10 +103,27 @@ func (lex *Lexer) Scan() []Token {
 			typ = SymbolTokenType
 		case '*':
 			typ = StarTokenType
+		case '-':
+			typ = MinusTokenType
 		case '(':
 			typ = LParenTokenType
 		case ')':
 			typ = RParenTokenType
+		case '[':
+			lex.tokens = append(lex.tokens, NewToken(LSqBracketTokenType, ru))
+			ru2, err := lex.read()
+			if errors.Is(err, io.EOF) {
+				panic(ErrInvalidRegex)
+			}
+			ru = ru2
+			switch ru {
+			case '^':
+				typ = NegationTokenType
+			default:
+				typ = SymbolTokenType
+			}
+		case ']':
+			typ = RSqBracketTokenType
 		case '|':
 			typ = BarTokenType
 		case '.':

@@ -3,6 +3,9 @@ package regexp
 import (
 	"errors"
 	"io"
+
+	"github.com/goropikari/golex/automata"
+	"github.com/goropikari/golex/collection"
 )
 
 var (
@@ -83,6 +86,75 @@ func (p *Parser) sum() (RegexExpr, error) {
 	return lhs, nil
 }
 
+func (p *Parser) set() (RegexExpr, error) {
+	neg := false
+	runes := make([]rune, 0)
+	var prev rune
+
+	for {
+		tok, err := p.peek()
+		if err != nil {
+			return nil, err
+		}
+		switch tok.GetType() {
+		case RSqBracketTokenType:
+			if prev == '-' {
+				return nil, ErrParse
+			}
+			goto Out
+		case NegationTokenType:
+			prev = tok.GetRune()
+			neg = true
+		case MinusTokenType:
+			prev = tok.GetRune()
+		default:
+			ru := tok.GetRune()
+			if prev == '-' {
+				from := runes[len(runes)-1]
+				if from > ru {
+					return nil, ErrParse
+				}
+				for t := from + 1; t < ru; t++ {
+					runes = append(runes, t)
+				}
+			}
+			runes = append(runes, ru)
+			prev = ru
+		}
+		_, _ = p.read()
+	}
+Out:
+	var expr RegexExpr
+	if !neg {
+		expr = NewSymbolExpr(runes[0])
+		if len(runes) == 1 {
+			return expr, nil
+		}
+
+		for i := 1; i < len(runes); i++ {
+			rhs := NewSymbolExpr(runes[i])
+			expr = NewSumExpr(expr, rhs)
+		}
+		return expr, nil
+	}
+
+	ruSet := collection.NewSet[rune]()
+	for _, ru := range runes {
+		ruSet.Insert(ru)
+	}
+	for _, ru := range automata.SupportedChars {
+		if !ruSet.Contains(ru) {
+			if expr == nil {
+				expr = NewSymbolExpr(ru)
+			} else {
+				expr = NewSumExpr(expr, NewSymbolExpr(ru))
+			}
+		}
+	}
+
+	return expr, nil
+}
+
 func (p *Parser) concat() (RegexExpr, error) {
 	lhs, err := p.star()
 	if err != nil {
@@ -98,7 +170,7 @@ func (p *Parser) concat() (RegexExpr, error) {
 	}
 
 	switch b.GetType() {
-	case SymbolTokenType, DotTokenType, LParenTokenType:
+	case SymbolTokenType, DotTokenType, LParenTokenType, LSqBracketTokenType:
 		rhs, err := p.concat()
 		if err != nil {
 			return nil, err
@@ -133,28 +205,38 @@ func (p *Parser) primary() (RegexExpr, error) {
 	if err != nil {
 		return nil, err
 	}
-	if s.GetType() == SymbolTokenType {
+
+	switch s.GetType() {
+	case SymbolTokenType:
 		return NewSymbolExpr(s.GetRune()), nil
-	}
-	if s.GetType() == DotTokenType {
+	case DotTokenType:
 		return NewDotExpr(), nil
-	}
-	if s.GetType() != LParenTokenType {
-		return nil, ErrParse
+	case LParenTokenType:
+		sum, err := p.sum()
+		if err != nil {
+			return nil, err
+		}
+		r, err := p.read()
+		if err != nil {
+			return nil, err
+		}
+		if r.GetType() == RParenTokenType {
+			return sum, nil
+		}
+	case LSqBracketTokenType:
+		set, err := p.set()
+		if err != nil {
+			return nil, err
+		}
+		r, err := p.read()
+		if err != nil {
+			return nil, err
+		}
+		if r.GetType() == RSqBracketTokenType {
+			return set, nil
+		}
 	}
 
-	// grouping expr
-	sum, err := p.sum()
-	if err != nil {
-		return nil, err
-	}
-	r, err := p.read()
-	if err != nil {
-		return nil, err
-	}
-	if r.GetType() == RParenTokenType {
-		return sum, nil
-	}
 	return nil, ErrParse
 }
 
