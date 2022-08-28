@@ -8,7 +8,9 @@ import (
 	"github.com/goccy/go-graphviz"
 	"github.com/goropikari/golex/automata"
 	"github.com/goropikari/golex/collection"
-	"github.com/goropikari/golex/compile"
+	"github.com/goropikari/golex/compile/golex"
+	"github.com/goropikari/golex/compile/regexp"
+	lexer "github.com/goropikari/golex/expected"
 )
 
 func handMaid() {
@@ -88,12 +90,12 @@ func Dot() {
 }
 
 func convertNFA(regex string) {
-	// lex := compile.NewLexer("(a*|b)cde*|fghh*")
-	lex := compile.NewLexer(regex)
+	// lex := regexp.NewLexer("(a*|b)cde*|fghh*")
+	lex := regexp.NewLexer(regex)
 	tokens := lex.Scan()
-	parser := compile.NewParser(tokens)
+	parser := regexp.NewParser(tokens)
 	ast, _ := parser.Parse()
-	gen := compile.NewCodeGenerator()
+	gen := regexp.NewCodeGenerator()
 	ast.Accept(gen)
 
 	s, _ := gen.GetNFA().ToDot()
@@ -101,12 +103,12 @@ func convertNFA(regex string) {
 }
 
 func convertDFA(regex string) {
-	// lex := compile.NewLexer("(a*|b)cde*|fghh*")
-	lex := compile.NewLexer(regex)
+	// lex := regexp.NewLexer("(a*|b)cde*|fghh*")
+	lex := regexp.NewLexer(regex)
 	tokens := lex.Scan()
-	parser := compile.NewParser(tokens)
+	parser := regexp.NewParser(tokens)
 	ast, _ := parser.Parse()
-	gen := compile.NewCodeGenerator()
+	gen := regexp.NewCodeGenerator()
 	ast.Accept(gen)
 
 	// s, _ := gen.GetNFA().ToDFA().Minimize().Totalize().ToDot()
@@ -118,11 +120,11 @@ func convertDFA(regex string) {
 }
 
 func parse(regex string) automata.NFA {
-	lex := compile.NewLexer(regex)
+	lex := regexp.NewLexer(regex)
 	tokens := lex.Scan()
-	parser := compile.NewParser(tokens)
+	parser := regexp.NewParser(tokens)
 	ast, _ := parser.Parse()
-	gen := compile.NewCodeGenerator()
+	gen := regexp.NewCodeGenerator()
 	ast.Accept(gen)
 
 	return gen.GetNFA()
@@ -144,26 +146,44 @@ func lexerNFA(regexs []string) automata.NFA {
 	return nfa
 }
 
-func main() {
-	// regex := "a"
-	// convertNFA(regex)
-	// convertDFA(regex)
+func testSample() {
+	lex := lexer.New("aaa")
+	for {
+		tok, err := lex.Next()
+		if err != nil {
+			fmt.Println(err)
+			break
+		}
+		fmt.Printf("\t%v %v\n", tok, lexer.YYtext)
+	}
+}
 
-	nfa := lexerNFA([]string{"a", "abb", "a*bb*", ".*"})
-	// letter := "(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z)"
-	// digit := "(0|1|2|3|4|5|6|7|8|9)"
-	// digits := digit + digit + "*"
-	// id := fmt.Sprintf("%v(%v|%v)*", letter, letter, digit)
-	// nfa := lexerNFA([]string{
-	// 	digits,
-	// 	"if|then|begin|end|func",
-	// 	id,
-	// 	"\\+|\\-|\\*|/",
-	// 	"( |\n|\t|\r)",
-	// 	"\\.",
-	// 	".",
-	// })
-	dfa := nfa.ToDFA().LexerMinimize()
-	s, _ := dfa.RemoveBH().ToDot()
-	fmt.Println(s)
+func gen() {
+	golex.Gen()
+}
+
+func main() {
+	// // regex := "a"
+	// // convertNFA(regex)
+	// // convertDFA(regex)
+	//
+	// nfa := lexerNFA([]string{"a", "abb", "a*bb*", ".*"})
+	// // letter := "(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z)"
+	// // digit := "(0|1|2|3|4|5|6|7|8|9)"
+	// // digits := digit + digit + "*"
+	// // id := fmt.Sprintf("%v(%v|%v)*", letter, letter, digit)
+	// // nfa := lexerNFA([]string{
+	// // 	digits,
+	// // 	"if|then|begin|end|func",
+	// // 	id,
+	// // 	"\\+|\\-|\\*|/",
+	// // 	"( |\n|\t|\r)",
+	// // 	"\\.",
+	// // 	".",
+	// // })
+	// dfa := nfa.ToDFA().LexerMinimize()
+	// s, _ := dfa.RemoveBH().ToDot()
+	// fmt.Println(s)
+
+	gen()
 }

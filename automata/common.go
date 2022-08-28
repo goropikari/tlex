@@ -33,6 +33,9 @@ func (st State) GetLabel() string {
 }
 
 func (st State) GetTokenID() TokenID {
+	if int(st.tokenID) == stdmath.MaxInt {
+		return 0
+	}
 	return st.tokenID
 }
 

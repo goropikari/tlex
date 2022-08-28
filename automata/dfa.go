@@ -43,6 +43,22 @@ func NewDFA(q collection.Set[State], delta DFATransition, initState State, finSt
 	}
 }
 
+func (dfa DFA) GetStates() collection.Set[State] {
+	return dfa.q
+}
+
+func (dfa DFA) GetInitState() State {
+	return dfa.initState
+}
+
+func (dfa DFA) GetFinStates() collection.Set[State] {
+	return dfa.finStates
+}
+
+func (dfa DFA) GetTransitionTable() DFATransition {
+	return dfa.delta
+}
+
 func (dfa DFA) Accept(s string) (TokenID, bool) {
 	currSt := dfa.initState
 
