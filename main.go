@@ -16,6 +16,7 @@ var (
 )
 
 func main() {
+	// defer profile.Start(profile.ProfilePath(".")).Stop()
 	flag.StringVar(&pkgName, "pkg", "main", "generated go file package name")
 	flag.StringVar(&srcfile, "src", "sample.l", "input lexer cinfiguration file")
 	flag.StringVar(&outfile, "o", "golex.yy.go", "generated file path")

@@ -59,6 +59,16 @@ func (dfa DFA) GetTransitionTable() DFATransition {
 	return dfa.delta
 }
 
+func (dfa DFA) ToNFA() NFA {
+	dfa = dfa.Copy().Minimize()
+	delta := make(NFATransition)
+	for pair, to := range dfa.delta {
+		delta[pair] = collection.NewSet[State]().Insert(to)
+	}
+
+	return NewNFA(dfa.q, delta, collection.NewSet[State]().Insert(dfa.initState), dfa.finStates)
+}
+
 func (dfa DFA) Accept(s string) (TokenID, bool) {
 	currSt := dfa.initState
 
