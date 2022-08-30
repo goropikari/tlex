@@ -16,6 +16,8 @@ var (
 )
 
 func main() {
+	// go get github.com/pkg/profile
+	// go tool pprof -http=":8081" cpu.pprof
 	// defer profile.Start(profile.ProfilePath(".")).Stop()
 	flag.StringVar(&pkgName, "pkg", "main", "generated go file package name")
 	flag.StringVar(&srcfile, "src", "sample.l", "input lexer cinfiguration file")

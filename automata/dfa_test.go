@@ -178,7 +178,8 @@ func TestDot(t *testing.T) {
 	// generate dot file
 	// go test ./automata/ -run TestDot
 
-	s, _ := lexerNFA([]string{"a", "abb", "a*bb*", "e[^a-zA-Z0-9]*h", "f[a-d]e"}).ToDFA().LexerMinimize().RemoveBH().ToDot()
+	// s, _ := lexerNFA([]string{"a", "abb", "a*bb*", "e[^a-zA-Z0-9]*h", "f[a-d]e"}).ToDFA().LexerMinimize().RemoveBH().ToDot()
+	s, _ := lexerNFA([]string{"a", "abb", "a*bb*"}).ToDFA().LexerMinimize().RemoveBH().ToDot()
 	err := os.WriteFile("ex.dot", []byte(s), 0666)
 	if err != nil {
 		log.Fatal(err)

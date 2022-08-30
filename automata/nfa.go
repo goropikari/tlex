@@ -123,8 +123,16 @@ func (nfa NFA) Star() NFA {
 }
 
 func (nfa NFA) ToDFA() DFA {
+	ecl := map[State]collection.Set[State]{}
+	for st := range nfa.q {
+		ecl[st] = nfa.eClosure(st)
+	}
+
 	que := list.New()
-	initStates := nfa.eClosureSet(nfa.initStates)
+	initStates := collection.NewSet[State]()
+	for st := range nfa.initStates {
+		initStates = initStates.Union(ecl[st])
+	}
 	que.PushBack(initStates)
 	finStates := nfa.finStates
 	dfaInitStates := NewStateSet(initStates)
@@ -145,7 +153,11 @@ func (nfa NFA) ToDFA() DFA {
 			tos := collection.NewSet[State]()
 			for from := range froms {
 				if nx, ok := nfa.delta[collection.NewTuple(from, ru)]; ok {
-					tos = tos.Union(nfa.eClosureSet(nx))
+					for ns := range nx {
+						tos = tos.Union(ecl[ns])
+					}
+
+					// tos = tos.Union(nfa.eClosureSet(nx))
 				}
 			}
 			if len(tos) == 0 {
@@ -198,13 +210,13 @@ func (nfa NFA) eClosure(st State) collection.Set[State] {
 	return closure
 }
 
-func (nfa NFA) eClosureSet(sts collection.Set[State]) collection.Set[State] {
-	closure := collection.NewSet[State]()
-	for st := range sts {
-		closure = closure.Union(nfa.eClosure(st))
-	}
-	return closure
-}
+// func (nfa NFA) eClosureSet(sts collection.Set[State]) collection.Set[State] {
+// 	closure := collection.NewSet[State]()
+// 	for st := range sts {
+// 		closure = closure.Union(nfa.eClosure(st))
+// 	}
+// 	return closure
+// }
 
 func (nfa *NFA) SetTokenID(id TokenID) {
 	nfa2 := nfa.Copy()
