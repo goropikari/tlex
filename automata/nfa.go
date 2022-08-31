@@ -2,7 +2,6 @@ package automata
 
 import (
 	"bytes"
-	"container/list"
 	"fmt"
 	"log"
 
@@ -103,7 +102,7 @@ func (nfa NFA) Sum(other NFA) NFA {
 func (nfa NFA) Star() NFA {
 	nfa = nfa.Copy()
 
-	startFinState := NewState(guid.New())
+	startFinState := NewState(StateID(guid.New()))
 	initStates := collection.NewSet[State]().Insert(startFinState)
 
 	nfa.q.Insert(startFinState)
@@ -122,101 +121,85 @@ func (nfa NFA) Star() NFA {
 	return NewNFA(nfa.q, nfa.delta, initStates, initStates)
 }
 
-func (nfa NFA) ToDFA() DFA {
-	ecl := map[State]collection.Set[State]{}
+func (nfa NFA) ToImNFA() ImNFA {
+	nfa = nfa.relabelStateIDs()
+	maxID := len(nfa.q)
+	n := maxID + 1
+	stIDToRegID := make([]TokenID, n)
 	for st := range nfa.q {
-		ecl[st] = nfa.eClosure(st)
+		stIDToRegID[int(st.GetID())] = st.tokenID
 	}
-
-	que := list.New()
-	initStates := collection.NewSet[State]()
-	for st := range nfa.initStates {
-		initStates = initStates.Union(ecl[st])
+	delta := map[collection.Tuple[StateID, rune]]collection.Bitset{}
+	for pair, tos := range nfa.delta {
+		from := pair.First
+		ru := pair.Second
+		delta[collection.NewTuple(from.GetID(), ru)] = buildBitset(n, tos)
 	}
-	que.PushBack(initStates)
-	finStates := nfa.finStates
-	dfaInitStates := NewStateSet(initStates)
-	memo := collection.NewSet[State]().Insert(dfaInitStates)
+	initStates := buildBitset(n, nfa.initStates)
+	finStates := buildBitset(n, nfa.finStates)
 
-	dfaFinStates := collection.NewSet[State]()
-	if len(initStates.Intersection(finStates)) > 0 {
-		dfaFinStates.Insert(dfaInitStates)
+	return ImNFA{
+		maxID:       maxID,
+		stIDToRegID: stIDToRegID,
+		delta:       delta,
+		initStates:  initStates,
+		finStates:   finStates,
 	}
-	dfaDelta := make(DFATransition)
-
-	for que.Len() > 0 {
-		top := que.Front()
-		que.Remove(top)
-		froms := top.Value.(collection.Set[State])
-
-		for _, ru := range SupportedChars {
-			tos := collection.NewSet[State]()
-			for from := range froms {
-				if nx, ok := nfa.delta[collection.NewTuple(from, ru)]; ok {
-					for ns := range nx {
-						tos = tos.Union(ecl[ns])
-					}
-
-					// tos = tos.Union(nfa.eClosureSet(nx))
-				}
-			}
-			if len(tos) == 0 {
-				continue
-			}
-			to := NewStateSet(tos)
-			if len(tos.Intersection(finStates)) > 0 {
-				dfaFinStates.Insert(to)
-			}
-			dfaDelta[collection.NewTuple(NewStateSet(froms), ru)] = to
-			if memo.Contains(to) {
-				continue
-			}
-			memo.Insert(to)
-			que.PushBack(tos)
-		}
-	}
-
-	q := collection.NewSet[State]()
-	for st := range memo {
-		q.Insert(st)
-	}
-
-	return NewDFA(q, dfaDelta, dfaInitStates, dfaFinStates)
 }
 
-func (nfa NFA) eClosure(st State) collection.Set[State] {
-	que := list.New()
-	que.PushBack(st)
-	visited := collection.NewSet[State]().Insert(st)
-
-	closure := visited.Copy()
-	for que.Len() > 0 {
-		front := que.Front()
-		que.Remove(front)
-		top := front.Value.(State)
-
-		if nxs, ok := nfa.delta[collection.NewTuple(top, epsilon)]; ok {
-			closure = closure.Union(nxs)
-
-			for nx := range nxs {
-				if !visited.Contains(nx) {
-					visited.Insert(nx)
-					que.PushBack(nx)
-				}
-			}
-		}
+func (nfa NFA) relabelStateIDs() NFA {
+	nfa = nfa.Copy()
+	id := StateID(1)
+	oldToNewID := map[StateID]StateID{}
+	newq := collection.NewSet[State]()
+	for oldst := range nfa.q {
+		newst := NewState(id)
+		newst.SetTokenID(oldst.GetRawTokenID())
+		newq.Insert(newst)
+		oldToNewID[oldst.GetID()] = id
+		id++
 	}
 
-	return closure
+	newdelta := make(NFATransition)
+	for pair, tos := range nfa.delta {
+		oldfrom := pair.First
+		ru := pair.Second
+
+		newfrom := NewState(oldToNewID[oldfrom.GetID()])
+		newfrom.SetTokenID(oldfrom.GetRawTokenID())
+		newtos := collection.NewSet[State]()
+		for oldto := range tos {
+			newto := NewState(oldToNewID[oldto.GetID()])
+			newto.SetTokenID(oldto.GetRawTokenID())
+			newtos.Insert(newto)
+		}
+		newdelta[collection.NewTuple(newfrom, ru)] = newtos
+	}
+
+	newInitStates := collection.NewSet[State]()
+	for oldst := range nfa.initStates {
+		newst := NewState(oldToNewID[oldst.GetID()])
+		newst.SetTokenID(oldst.GetRawTokenID())
+		newInitStates.Insert(newst)
+	}
+
+	newFinStates := collection.NewSet[State]()
+	for oldst := range nfa.finStates {
+		newst := NewState(oldToNewID[oldst.GetID()])
+		newst.SetTokenID(oldst.GetRawTokenID())
+		newFinStates.Insert(newst)
+	}
+
+	return NewNFA(newq, newdelta, newInitStates, newFinStates)
 }
 
-// func (nfa NFA) eClosureSet(sts collection.Set[State]) collection.Set[State] {
-// 	closure := collection.NewSet[State]()
-// 	for st := range sts {
-// 		closure = closure.Union(nfa.eClosure(st))
-// 	}
-// 	return closure
-// }
+func buildBitset(n int, tos collection.Set[State]) collection.Bitset {
+	bs := collection.NewBitset(n)
+	for to := range tos {
+		bs = bs.Up(int(to.GetID()))
+	}
+	return bs
+}
 
 func (nfa *NFA) SetTokenID(id TokenID) {
 	nfa2 := nfa.Copy()
@@ -285,12 +268,12 @@ func (nfa NFA) ToDot() (string, error) {
 	nodes := make(map[State]*cgraph.Node)
 	ii, si, fi := 0, 0, 0
 	for s := range nfa.q {
-		n, err := graph.CreateNode(guid.New()) // assign unique node id
+		n, err := graph.CreateNode(fmt.Sprintf("%v", guid.New())) // assign unique node id
 		if err != nil {
 			return "", err
 		}
 		if nfa.initStates.Contains(s) {
-			e, err := graph.CreateEdge(guid.New(), start, n)
+			e, err := graph.CreateEdge(fmt.Sprintf("%v", guid.New()), start, n)
 			if err != nil {
 				return "", err
 			}

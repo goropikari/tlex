@@ -164,7 +164,7 @@ func TestDFA_Accept(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			dfa := lexerNFA(tt.regexs).ToDFA().LexerMinimize().RemoveBH()
+			dfa := lexerNFA(tt.regexs).ToImNFA().ToDFA().LexerMinimize().RemoveBH()
 
 			regexID, accept := dfa.Accept(tt.given)
 
@@ -175,16 +175,42 @@ func TestDFA_Accept(t *testing.T) {
 }
 
 func TestDot(t *testing.T) {
-	// generate dot file
-	// go test ./automata/ -run TestDot
+	// // generate dot file
+	// // go test ./automata/ -run TestDot
 
-	// s, _ := lexerNFA([]string{"a", "abb", "a*bb*", "e[^a-zA-Z0-9]*h", "f[a-d]e"}).ToDFA().LexerMinimize().RemoveBH().ToDot()
-	s, _ := lexerNFA([]string{"a", "abb", "a*bb*"}).ToDFA().LexerMinimize().RemoveBH().ToDot()
+	// // s, _ := lexerNFA([]string{"a", "abb", "a*bb*", "e[^a-zA-Z0-9]*h", "f[a-d]e"}).ToDFA().LexerMinimize().RemoveBH().ToDot()
+	// s, _ := lexerNFA([]string{"a", "abb", "a*bb*"}).ToDFA().LexerMinimize().RemoveBH().ToDot()
+	// err := os.WriteFile("ex.dot", []byte(s), 0666)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// graph, err := graphviz.ParseBytes([]byte(s))
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// g := graphviz.New()
+	// if err := g.RenderFilename(graph, graphviz.PNG, "ex.png"); err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	s, _ := lexerNFA([]string{"a", "abb", "a*bb*"}).ToImNFA().ToDFA().LexerMinimize().RemoveBH().ToDot()
+	// s, _ := lexerNFA([]string{
+	// 	"if|for|while|func|return",
+	// 	"[a-zA-Z][a-zA-Z0-9]*",
+	// 	"[1-9][0-9]*",
+	// 	"[ \t\n\r]*",
+	// 	"\\(",
+	// 	"\\)",
+	// 	"{",
+	// 	"}",
+	// 	"\\+|\\-|\\*|/|:=|==|!=",
+	// 	".",
+	// }).ToImNFA().ToDFA().LexerMinimize().RemoveBH().ToDot()
 	err := os.WriteFile("ex.dot", []byte(s), 0666)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	graph, err := graphviz.ParseBytes([]byte(s))
 	if err != nil {
 		log.Fatal(err)
@@ -193,6 +219,13 @@ func TestDot(t *testing.T) {
 	if err := g.RenderFilename(graph, graphviz.PNG, "ex.png"); err != nil {
 		log.Fatal(err)
 	}
+
+	// f, err := os.OpenFile("/home/arch/workspace/github/golex/sample/sample.l", os.O_RDONLY, 0644)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// r := bufio.NewReader(f)
+	// lex.Generate(r, "main", "/home/arch/workspace/github/golex/sample/golex.yy.go")
 }
 
 func lexerNFA(regexs []string) automata.NFA {

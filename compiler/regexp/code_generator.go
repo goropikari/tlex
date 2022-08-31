@@ -42,8 +42,8 @@ func (gen *CodeGenerator) VisitStarExpr(expr StarExpr) {
 }
 
 func (gen *CodeGenerator) VisitSymbolExpr(expr SymbolExpr) {
-	from := automata.NewState(guid.New())
-	to := automata.NewState(guid.New())
+	from := automata.NewState(automata.StateID(guid.New()))
+	to := automata.NewState(automata.StateID(guid.New()))
 
 	gen.nfa = automata.NewNFA(
 		collection.NewSet[automata.State]().Insert(from).Insert(to),
@@ -56,13 +56,13 @@ func (gen *CodeGenerator) VisitSymbolExpr(expr SymbolExpr) {
 }
 
 func (gen *CodeGenerator) VisitDotExpr(expr DotExpr) {
-	from := automata.NewState(guid.New())
+	from := automata.NewState(automata.StateID(guid.New()))
 	trans := make(automata.NFATransition)
 	states := collection.NewSet[automata.State]().Insert(from)
 	finStates := collection.NewSet[automata.State]()
 
 	for _, ru := range automata.SupportedChars {
-		to := automata.NewState(guid.New())
+		to := automata.NewState(automata.StateID(guid.New()))
 		states = states.Insert(to)
 		finStates = finStates.Insert(to)
 		trans[collection.NewTuple(from, ru)] = collection.NewSet[automata.State]().Insert(to)

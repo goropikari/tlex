@@ -1,7 +1,6 @@
 package guid
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -9,13 +8,13 @@ var mu sync.Mutex
 var id int
 
 func init() {
-	id = -1
+	id = 0
 }
 
-func New() string {
+func New() int {
 	mu.Lock()
 	defer mu.Unlock()
 
 	id++
-	return fmt.Sprintf("s%v", id)
+	return id
 }

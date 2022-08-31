@@ -37,9 +37,10 @@ func Generate(r *bufio.Reader, pkgName string, outfile string) {
 	}
 
 	dfa := lexerDFA(regexs)
-	id := 2
 	stToID := make(map[automata.State]int)
-	stToID[dfa.GetInitState()] = 1
+	id := 1
+	stToID[dfa.GetInitState()] = id
+	id++
 	for st := range dfa.GetStates() {
 		if st == dfa.GetInitState() {
 			continue
@@ -152,7 +153,7 @@ func lexerDFA(regexs []string) automata.DFA {
 		nfa = nfa.Sum(*n)
 	}
 
-	return nfa.ToDFA().LexerMinimize().RemoveBH()
+	return nfa.ToImNFA().ToDFA().LexerMinimize().RemoveBH()
 }
 
 func genRegexActions(actions []string) string {

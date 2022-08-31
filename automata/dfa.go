@@ -14,7 +14,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-const blackHole = "BH"
+const blackHole = 0
 
 type DFATransition map[collection.Tuple[State, rune]]State
 
@@ -59,22 +59,22 @@ func (dfa DFA) GetTransitionTable() DFATransition {
 	return dfa.delta
 }
 
-func (dfa DFA) ToNFA() NFA {
-	dfa = dfa.Copy().Minimize()
-	delta := make(NFATransition)
-	for pair, to := range dfa.delta {
-		delta[pair] = collection.NewSet[State]().Insert(to)
-	}
+// func (dfa DFA) ToNFA() NFA {
+// 	dfa = dfa.Copy().Minimize()
+// 	delta := make(NFATransition)
+// 	for pair, to := range dfa.delta {
+// 		delta[pair] = collection.NewSet[State]().Insert(to)
+// 	}
 
-	return NewNFA(dfa.q, delta, collection.NewSet[State]().Insert(dfa.initState), dfa.finStates)
-}
+// 	return NewNFA(dfa.q, delta, collection.NewSet[State]().Insert(dfa.initState), dfa.finStates)
+// }
 
 func (dfa DFA) Accept(s string) (TokenID, bool) {
 	currSt := dfa.initState
 
 	for _, ru := range []rune(s) {
 		currSt = dfa.Step(currSt, ru)
-		if currSt.GetLabel() == blackHole {
+		if currSt.GetID() == blackHole {
 			return 0, false
 		}
 		if (currSt == State{}) {
@@ -134,10 +134,10 @@ func (dfa DFA) Reverse() NFA {
 	return NewNFA(dfa.q, delta, dfa.finStates, collection.NewSet[State]().Insert(dfa.initState))
 }
 
-// Brzozowski DFA minimization algorithm
-func (dfa DFA) Minimize() DFA {
-	return dfa.Reverse().ToDFA().Reverse().ToDFA()
-}
+// // Brzozowski DFA minimization algorithm
+// func (dfa DFA) Minimize() DFA {
+// 	return dfa.Reverse().ToDFA().Reverse().ToDFA()
+// }
 
 func (dfa DFA) RemoveBH() DFA {
 	dfa = dfa.Copy()
@@ -146,7 +146,7 @@ func (dfa DFA) RemoveBH() DFA {
 	dfa.q.Erase(bhSt)
 
 	for pair, to := range dfa.delta {
-		if to.GetLabel() == blackHole {
+		if to.GetID() == blackHole {
 			delete(dfa.delta, pair)
 		}
 	}
@@ -362,12 +362,12 @@ func (dfa DFA) ToDot() (string, error) {
 	nodes := make(map[State]*cgraph.Node)
 	si, fi := 0, 0
 	for s := range dfa.q {
-		n, err := graph.CreateNode(guid.New()) // assign unique node id
+		n, err := graph.CreateNode(fmt.Sprintf("%v", guid.New())) // assign unique node id
 		if err != nil {
 			return "", err
 		}
 		if dfa.initState == s {
-			e, err := graph.CreateEdge(guid.New(), start, n)
+			e, err := graph.CreateEdge(fmt.Sprintf("%v", guid.New()), start, n)
 			if err != nil {
 				return "", err
 			}
@@ -377,8 +377,9 @@ func (dfa DFA) ToDot() (string, error) {
 			n.SetShape(cgraph.DoubleCircleShape)
 			n.SetLabel(fmt.Sprintf("F%v_%v", fi, toStateTokenID(s.GetTokenID())))
 			fi++
-		} else if s.GetLabel() == blackHole {
-			n.SetLabel(blackHole)
+		} else if s.GetID() == blackHole {
+			// n.SetLabel(blackHole)
+			n.SetLabel("BH")
 		} else {
 			n.SetShape(cgraph.CircleShape)
 			n.SetLabel(fmt.Sprintf("S%v_%v", si, toStateTokenID(s.GetTokenID())))
@@ -396,7 +397,7 @@ func (dfa DFA) ToDot() (string, error) {
 	}
 	for edge, labels := range edges {
 		from, to := edge.First, edge.Second
-		e, err := graph.CreateEdge(guid.New(), nodes[from], nodes[to])
+		e, err := graph.CreateEdge(fmt.Sprintf("%v", guid.New()), nodes[from], nodes[to])
 		if err != nil {
 			return "", err
 		}
