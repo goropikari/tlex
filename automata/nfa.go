@@ -129,14 +129,14 @@ func (nfa NFA) ToImNFA() ImNFA {
 	for st := range nfa.q {
 		stIDToRegID[int(st.GetID())] = st.tokenID
 	}
-	delta := map[collection.Tuple[StateID, rune]]collection.Bitset{}
+	delta := map[collection.Tuple[StateID, rune]]*StateSet{}
 	for pair, tos := range nfa.delta {
 		from := pair.First
 		ru := pair.Second
-		delta[collection.NewTuple(from.GetID(), ru)] = buildBitset(n, tos)
+		delta[collection.NewTuple(from.GetID(), ru)] = buildStateSet(n, tos)
 	}
-	initStates := buildBitset(n, nfa.initStates)
-	finStates := buildBitset(n, nfa.finStates)
+	initStates := buildStateSet(n, nfa.initStates)
+	finStates := buildStateSet(n, nfa.finStates)
 
 	return ImNFA{
 		maxID:       maxID,
@@ -193,10 +193,10 @@ func (nfa NFA) relabelStateIDs() NFA {
 	return NewNFA(newq, newdelta, newInitStates, newFinStates)
 }
 
-func buildBitset(n int, tos collection.Set[State]) collection.Bitset {
-	bs := collection.NewBitset(n)
+func buildStateSet(n int, tos collection.Set[State]) *StateSet {
+	bs := NewStateSet(n)
 	for to := range tos {
-		bs = bs.Up(int(to.GetID()))
+		bs = bs.Insert(to.GetID())
 	}
 	return bs
 }

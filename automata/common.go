@@ -3,6 +3,8 @@ package automata
 import (
 	"crypto/sha256"
 	stdmath "math"
+
+	"github.com/goropikari/golex/collection"
 )
 
 const epsilon = 'ε'
@@ -43,6 +45,51 @@ func (st State) GetRawTokenID() TokenID {
 
 func (st *State) SetTokenID(id TokenID) {
 	st.tokenID = id
+}
+
+type StateSet struct {
+	bs collection.Bitset
+}
+
+func NewStateSet(n int) *StateSet {
+	return &StateSet{
+		bs: collection.NewBitset(n),
+	}
+}
+
+func (ss *StateSet) Insert(x StateID) *StateSet {
+	ss.bs = ss.bs.Up(int(x))
+	return ss
+}
+
+func (ss *StateSet) Copy() *StateSet {
+	return &StateSet{
+		bs: ss.bs.Copy(),
+	}
+}
+
+func (ss *StateSet) Union(other *StateSet) *StateSet {
+	return &StateSet{
+		bs: ss.bs.Union(other.bs),
+	}
+}
+
+func (ss *StateSet) Intersection(other *StateSet) *StateSet {
+	return &StateSet{
+		bs: ss.bs.Intersection(other.bs),
+	}
+}
+
+func (ss *StateSet) IsEmpty() bool {
+	return ss.bs.IsZero()
+}
+
+func (ss *StateSet) Contains(x StateID) bool {
+	return ss.bs.Contains(int(x))
+}
+
+func (ss *StateSet) Sha256() Sha {
+	return sha256.Sum256(ss.bs.Bytes())
 }
 
 func charLabel(s string) string {

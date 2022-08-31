@@ -33,13 +33,17 @@ const (
 %%
 
 func main() {
-    lex := New(`
+    program := `
 func foo000() int {
     x := 1 * 10 + 123 - 1000 / 5432
 
     return x
 }
-`)
+`
+    fmt.Println(program)
+    fmt.Println("-----------------")
+
+    lex := New(program)
     for {
         n, err := lex.Next()
         if err != nil {
