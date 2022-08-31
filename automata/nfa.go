@@ -121,7 +121,7 @@ func (nfa NFA) Star() NFA {
 	return NewNFA(nfa.q, nfa.delta, initStates, initStates)
 }
 
-func (nfa NFA) ToImNFA() ImNFA {
+func (nfa NFA) ToImNFA() ImdNFA {
 	nfa = nfa.relabelStateIDs()
 	maxID := len(nfa.q)
 	n := maxID + 1
@@ -138,7 +138,7 @@ func (nfa NFA) ToImNFA() ImNFA {
 	initStates := buildStateSet(n, nfa.initStates)
 	finStates := buildStateSet(n, nfa.finStates)
 
-	return ImNFA{
+	return ImdNFA{
 		maxID:       maxID,
 		stIDToRegID: stIDToRegID,
 		delta:       delta,

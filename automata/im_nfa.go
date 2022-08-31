@@ -14,7 +14,7 @@ import (
 	"github.com/goropikari/golex/utils/guid"
 )
 
-type ImNFA struct {
+type ImdNFA struct {
 	maxID       int
 	stIDToRegID []TokenID
 	delta       map[collection.Tuple[StateID, rune]]*StateSet
@@ -22,7 +22,7 @@ type ImNFA struct {
 	finStates   *StateSet
 }
 
-func (nfa ImNFA) ToDFA() DFA {
+func (nfa ImdNFA) ToDFA() DFA {
 	numst := nfa.maxID + 1
 	ecl := make([]*StateSet, numst)
 	for i := 1; i <= nfa.maxID; i++ {
@@ -133,7 +133,7 @@ func (nfa ImNFA) ToDFA() DFA {
 	}
 }
 
-func (nfa ImNFA) eclosure(x StateID) *StateSet {
+func (nfa ImdNFA) eclosure(x StateID) *StateSet {
 	que := list.New() // list of StateID
 	que.PushBack(x)
 
@@ -160,7 +160,7 @@ func (nfa ImNFA) eclosure(x StateID) *StateSet {
 	return closure
 }
 
-func (nfa ImNFA) ToDot() (string, error) {
+func (nfa ImdNFA) ToDot() (string, error) {
 	g := graphviz.New()
 	graph, err := g.Graph()
 	if err != nil {
