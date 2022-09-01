@@ -14,6 +14,8 @@ import (
 	"github.com/goropikari/golex/utils/guid"
 )
 
+type ImdNFATransition map[collection.Tuple[StateID, rune]]*StateSet
+
 type ImdNFA struct {
 	maxID       int
 	stIDToRegID []TokenID
@@ -22,20 +24,47 @@ type ImdNFA struct {
 	finStates   *StateSet
 }
 
+type allStateIDIterator struct {
+	maxID  int
+	currID int
+}
+
+func newAllStateIDIterator(maxID int) *allStateIDIterator {
+	return &allStateIDIterator{
+		maxID:  maxID,
+		currID: 1, // StateID = 0 is blackhole state
+	}
+}
+
+func (iter *allStateIDIterator) HasNext() bool {
+	return iter.currID <= iter.maxID
+}
+
+func (iter *allStateIDIterator) Next() StateID {
+	ret := StateID(iter.currID)
+	iter.currID++
+	return ret
+}
+
+func (nfa ImdNFA) iterator() *allStateIDIterator {
+	return newAllStateIDIterator(nfa.maxID)
+}
+
 func (nfa ImdNFA) ToDFA() DFA {
 	numst := nfa.maxID + 1
 	ecl := make([]*StateSet, numst)
-	for i := 1; i <= nfa.maxID; i++ {
-		b := nfa.eclosure(StateID(i))
-		ecl[i] = b
+	iter := nfa.iterator()
+	for iter.HasNext() {
+		sid := iter.Next()
+		b := nfa.eclosure(sid)
+		ecl[sid] = b
 	}
 
 	initState := nfa.initStates.Copy()
-	for i := 1; i <= nfa.maxID; i++ {
-		sid := StateID(i)
-		if nfa.initStates.Contains(sid) {
-			initState = initState.Union(ecl[i])
-		}
+	initIter := nfa.initStates.iterator()
+	for initIter.HasNext() {
+		sid := initIter.Next()
+		initState = initState.Union(ecl[sid])
 	}
 	que := list.New() // list of *StateSet
 	que.PushBack(initState)
@@ -57,16 +86,15 @@ func (nfa ImdNFA) ToDFA() DFA {
 
 		for _, ru := range SupportedChars {
 			tos := NewStateSet(numst)
-			for fromID := 1; fromID <= nfa.maxID; fromID++ {
-				fromStID := StateID(fromID)
-				if !froms.Contains(fromStID) {
-					continue
-				}
-				if nxs, ok := nfa.delta[collection.NewTuple(StateID(fromID), ru)]; ok {
-					for nxID := 1; nxID <= nfa.maxID; nxID++ {
-						nxStID := StateID(nxID)
+			fromIter := froms.iterator()
+			for fromIter.HasNext() {
+				fromStID := fromIter.Next()
+				if nxs, ok := nfa.delta[collection.NewTuple(fromStID, ru)]; ok {
+					nxsIter := nxs.iterator()
+					for nxsIter.HasNext() {
+						nxStID := nxsIter.Next()
 						if nxs.Contains(nxStID) {
-							tos = tos.Union(ecl[nxID])
+							tos = tos.Union(ecl[nxStID])
 						}
 					}
 				}
@@ -99,14 +127,13 @@ func (nfa ImdNFA) ToDFA() DFA {
 		if v, ok := visited[sha]; ok {
 			if !v.Intersection(nfa.finStates).IsEmpty() {
 				rid := TokenID(stdmath.MaxInt)
-				for i := 1; i < numst; i++ {
-					sid := StateID(i)
-					if v.Contains(sid) {
-						rid = math.Min(rid, nfa.stIDToRegID[StateID(i)])
-					}
+				viter := v.iterator()
+				for viter.HasNext() {
+					sid := viter.Next()
+					rid = math.Min(rid, nfa.stIDToRegID[sid])
 				}
 
-				st.SetTokenID(TokenID(rid))
+				st.SetTokenID(rid)
 			}
 		}
 		dfaStates.Insert(st)
@@ -146,10 +173,10 @@ func (nfa ImdNFA) eclosure(x StateID) *StateSet {
 
 		if nxs, ok := nfa.delta[collection.NewTuple(top, epsilon)]; ok {
 			closure = closure.Union(nxs)
-
-			for nx := 1; nx <= nfa.maxID; nx++ {
-				nxStID := StateID(nx)
-				if nxs.Contains(nxStID) && !visited.Contains(nxStID) {
+			nxsIter := nxs.iterator()
+			for nxsIter.HasNext() {
+				nxStID := nxsIter.Next()
+				if !visited.Contains(nxStID) {
 					visited = visited.Insert(nxStID)
 					que.PushBack(nxStID)
 				}

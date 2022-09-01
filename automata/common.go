@@ -92,6 +92,50 @@ func (ss *StateSet) Sha256() Sha {
 	return sha256.Sum256(ss.bs.Bytes())
 }
 
+type stateSetIterator struct {
+	maxID  StateID
+	currID StateID
+	ss     *StateSet
+}
+
+func newStateSetIterator(ss *StateSet) *stateSetIterator {
+	sid := StateID(0)
+	maxID := StateID(ss.bs.GetLength() - 1)
+	for sid <= maxID {
+		if ss.Contains(sid) {
+			break
+		}
+		sid++
+	}
+
+	return &stateSetIterator{
+		maxID:  maxID,
+		currID: sid,
+		ss:     ss,
+	}
+}
+
+func (iter *stateSetIterator) HasNext() bool {
+	return iter.currID <= iter.maxID
+}
+
+func (iter *stateSetIterator) Next() StateID {
+	ret := iter.currID
+	iter.currID++
+	for iter.currID <= StateID(iter.maxID) {
+		if iter.ss.Contains(iter.currID) {
+			break
+		}
+		iter.currID++
+	}
+
+	return ret
+}
+
+func (ss *StateSet) iterator() *stateSetIterator {
+	return newStateSetIterator(ss)
+}
+
 func charLabel(s string) string {
 	switch s {
 	case "\t":

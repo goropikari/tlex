@@ -1,10 +1,13 @@
 .PHONY: test
-test:
+test: build
 	go test -shuffle on ./...
 
 .PHONY: test-verbose
 test-verbose:
 	go test -v -shuffle on ./...
+
+build:
+	go build
 
 dot:
 	go test ./automata/ -run TestDot

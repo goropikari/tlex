@@ -129,7 +129,7 @@ func (nfa NFA) ToImNFA() ImdNFA {
 	for st := range nfa.q {
 		stIDToRegID[int(st.GetID())] = st.tokenID
 	}
-	delta := map[collection.Tuple[StateID, rune]]*StateSet{}
+	delta := make(ImdNFATransition)
 	for pair, tos := range nfa.delta {
 		from := pair.First
 		ru := pair.Second

@@ -18,6 +18,10 @@ func (b Bitset) Bytes() []byte {
 	return b.x
 }
 
+func (b Bitset) GetLength() int {
+	return b.length
+}
+
 func (b Bitset) Copy() Bitset {
 	x := make([]byte, (b.length+7)/8)
 	copy(x, b.x)
