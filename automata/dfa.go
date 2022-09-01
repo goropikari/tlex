@@ -18,13 +18,13 @@ func (t DFATransition) Copy() DFATransition {
 }
 
 type DFA struct {
-	q         collection.Set[State]
+	q         *collection.Set[State]
 	delta     DFATransition
 	initState State
-	finStates collection.Set[State]
+	finStates *collection.Set[State]
 }
 
-func NewDFA(q collection.Set[State], delta DFATransition, initState State, finStates collection.Set[State]) DFA {
+func NewDFA(q *collection.Set[State], delta DFATransition, initState State, finStates *collection.Set[State]) DFA {
 	return DFA{
 		q:         q,
 		delta:     delta,
@@ -33,15 +33,15 @@ func NewDFA(q collection.Set[State], delta DFATransition, initState State, finSt
 	}
 }
 
-func (dfa DFA) GetStates() collection.Set[State] {
-	return dfa.q
+func (dfa DFA) GetStates() []State {
+	return dfa.q.Slice()
 }
 
 func (dfa DFA) GetInitState() State {
 	return dfa.initState
 }
 
-func (dfa DFA) GetFinStates() collection.Set[State] {
+func (dfa DFA) GetFinStates() *collection.Set[State] {
 	return dfa.finStates
 }
 
@@ -91,7 +91,9 @@ func (dfa DFA) Totalize() DFA {
 	delta := dfa.delta.Copy()
 	changed := false
 	for _, ru := range SupportedChars {
-		for st := range dfa.q {
+		qiter := dfa.q.Iterator()
+		for qiter.HasNext() {
+			st := qiter.Next()
 			tu := collection.NewPair(st, ru)
 			if _, ok := dfa.delta[tu]; !ok {
 				changed = true
@@ -145,20 +147,22 @@ func (dfa DFA) RemoveBH() DFA {
 }
 
 type stateGroup struct {
-	states collection.Set[State]
+	states *collection.Set[State]
 }
 
-func NewGroup(states collection.Set[State]) *stateGroup {
+func NewGroup(states *collection.Set[State]) *stateGroup {
 	return &stateGroup{states: states}
 }
 
 func (g *stateGroup) size() int {
-	return len(g.states)
+	return g.states.Size()
 }
 
 func (g *stateGroup) slice() []State {
 	sts := make([]State, 0)
-	for st := range g.states {
+	iter := g.states.Iterator()
+	for iter.HasNext() {
+		st := iter.Next()
 		sts = append(sts, st)
 	}
 
@@ -206,8 +210,10 @@ func (uf *stateUnionFind) find(x State) State {
 func (dfa DFA) grouping() []*stateGroup {
 	states := dfa.q.Slice()
 
-	stateSets := make(map[RegexID]collection.Set[State])
-	for st := range dfa.q {
+	stateSets := make(map[RegexID]*collection.Set[State])
+	qiter := dfa.q.Iterator()
+	for qiter.HasNext() {
+		st := qiter.Next()
 		if _, ok := stateSets[st.GetRegexID()]; ok {
 			stateSets[st.GetRegexID()].Insert(st)
 		} else {
@@ -265,7 +271,7 @@ func (dfa DFA) grouping() []*stateGroup {
 			}
 		}
 
-		newStateSets := make(map[State]collection.Set[State])
+		newStateSets := make(map[State]*collection.Set[State])
 		for _, st := range states {
 			leaderSt := newStUF.find(st)
 			if _, ok := newStateSets[leaderSt]; ok {
@@ -308,7 +314,9 @@ func (dfa DFA) LexerMinimize() DFA {
 	}
 
 	q := collection.NewSet[State]()
-	for st := range dfa.q {
+	qiter := dfa.q.Iterator()
+	for qiter.HasNext() {
+		st := qiter.Next()
 		q.Insert(uf.find(st))
 	}
 
@@ -323,7 +331,9 @@ func (dfa DFA) LexerMinimize() DFA {
 	}
 
 	finStates := collection.NewSet[State]()
-	for st := range dfa.finStates {
+	fiter := dfa.finStates.Iterator()
+	for fiter.HasNext() {
+		st := fiter.Next()
 		finStates.Insert(uf.find(st))
 	}
 

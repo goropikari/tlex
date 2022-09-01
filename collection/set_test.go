@@ -11,15 +11,18 @@ func TestSet_Insert(t *testing.T) {
 	tests := []struct {
 		name     string
 		given    []int
-		expected collection.Set[int]
+		expected *collection.Set[int]
 	}{
 		{
 			name:  "Insert",
 			given: []int{1, 2, 3},
-			expected: collection.Set[int]{
-				1: struct{}{},
-				2: struct{}{},
-				3: struct{}{},
+			expected: &collection.Set[int]{
+				Mp: map[int]struct{}{
+					1: {},
+					2: {},
+					3: {},
+				},
+				Elems: []int{1, 2, 3},
 			},
 		},
 	}
@@ -39,20 +42,26 @@ func TestSet_Insert(t *testing.T) {
 func TestSet_Erase(t *testing.T) {
 	tests := []struct {
 		name     string
-		given    collection.Set[int]
+		given    *collection.Set[int]
 		erase    []int
-		expected collection.Set[int]
+		expected *collection.Set[int]
 	}{
 		{
 			name: "Erase",
-			given: collection.Set[int]{
-				1: struct{}{},
-				2: struct{}{},
-				3: struct{}{},
+			given: &collection.Set[int]{
+				Mp: map[int]struct{}{
+					1: {},
+					2: {},
+					3: {},
+				},
+				Elems: []int{1, 2, 3},
 			},
 			erase: []int{1, 2},
-			expected: collection.Set[int]{
-				3: struct{}{},
+			expected: &collection.Set[int]{
+				Mp: map[int]struct{}{
+					3: {},
+				},
+				Elems: []int{3},
 			},
 		},
 	}
@@ -71,23 +80,32 @@ func TestSet_Erase(t *testing.T) {
 func TestSet_Difference(t *testing.T) {
 	tests := []struct {
 		name     string
-		lhs      collection.Set[int]
-		rhs      collection.Set[int]
-		expected collection.Set[int]
+		lhs      *collection.Set[int]
+		rhs      *collection.Set[int]
+		expected *collection.Set[int]
 	}{
 		{
 			name: "Difference",
-			lhs: collection.Set[int]{
-				1: struct{}{},
-				2: struct{}{},
-				3: struct{}{},
+			lhs: &collection.Set[int]{
+				Mp: map[int]struct{}{
+					1: {},
+					2: {},
+					3: {},
+				},
+				Elems: []int{1, 2, 3},
 			},
-			rhs: collection.Set[int]{
-				1: struct{}{},
-				2: struct{}{},
+			rhs: &collection.Set[int]{
+				Mp: map[int]struct{}{
+					1: {},
+					2: {},
+				},
+				Elems: []int{1, 2},
 			},
-			expected: collection.Set[int]{
-				3: struct{}{},
+			expected: &collection.Set[int]{
+				Mp: map[int]struct{}{
+					3: {},
+				},
+				Elems: []int{3},
 			},
 		},
 	}
@@ -102,24 +120,33 @@ func TestSet_Difference(t *testing.T) {
 func TestSet_Intersection(t *testing.T) {
 	tests := []struct {
 		name     string
-		lhs      collection.Set[int]
-		rhs      collection.Set[int]
-		expected collection.Set[int]
+		lhs      *collection.Set[int]
+		rhs      *collection.Set[int]
+		expected *collection.Set[int]
 	}{
 		{
 			name: "Intersection",
-			lhs: collection.Set[int]{
-				1: struct{}{},
-				2: struct{}{},
-				3: struct{}{},
+			lhs: &collection.Set[int]{
+				Mp: map[int]struct{}{
+					1: {},
+					2: {},
+					3: {},
+				},
+				Elems: []int{1, 2, 3},
 			},
-			rhs: collection.Set[int]{
-				1: struct{}{},
-				2: struct{}{},
+			rhs: &collection.Set[int]{
+				Mp: map[int]struct{}{
+					1: {},
+					2: {},
+				},
+				Elems: []int{1, 2},
 			},
-			expected: collection.Set[int]{
-				1: struct{}{},
-				2: struct{}{},
+			expected: &collection.Set[int]{
+				Mp: map[int]struct{}{
+					1: {},
+					2: {},
+				},
+				Elems: []int{1, 2},
 			},
 		},
 	}
@@ -134,24 +161,33 @@ func TestSet_Intersection(t *testing.T) {
 func TestSet_Union(t *testing.T) {
 	tests := []struct {
 		name     string
-		lhs      collection.Set[int]
-		rhs      collection.Set[int]
-		expected collection.Set[int]
+		lhs      *collection.Set[int]
+		rhs      *collection.Set[int]
+		expected *collection.Set[int]
 	}{
 		{
 			name: "Union",
-			lhs: collection.Set[int]{
-				2: struct{}{},
-				3: struct{}{},
+			lhs: &collection.Set[int]{
+				Mp: map[int]struct{}{
+					2: {},
+					3: {},
+				},
+				Elems: []int{2, 3},
 			},
-			rhs: collection.Set[int]{
-				1: struct{}{},
-				2: struct{}{},
+			rhs: &collection.Set[int]{
+				Mp: map[int]struct{}{
+					1: {},
+					2: {},
+				},
+				Elems: []int{1, 2},
 			},
-			expected: collection.Set[int]{
-				1: struct{}{},
-				2: struct{}{},
-				3: struct{}{},
+			expected: &collection.Set[int]{
+				Mp: map[int]struct{}{
+					1: {},
+					2: {},
+					3: {},
+				},
+				Elems: []int{2, 3, 1},
 			},
 		},
 	}

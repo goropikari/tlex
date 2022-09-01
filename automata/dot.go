@@ -33,7 +33,9 @@ func (nfa NFA) ToDot() (string, error) {
 	}
 	nodes := make(map[State]*cgraph.Node)
 	ii, si, fi := 0, 0, 0
-	for s := range nfa.q {
+	qiter := nfa.q.Iterator()
+	for qiter.HasNext() {
+		s := qiter.Next()
 		n, err := graph.CreateNode(fmt.Sprintf("%v", guid.New())) // assign unique node id
 		if err != nil {
 			return "", err
@@ -62,7 +64,9 @@ func (nfa NFA) ToDot() (string, error) {
 	for st, qs := range nfa.delta {
 		from := st.First
 		symbol := string(st.Second)
-		for to := range qs {
+		qsiter := qs.Iterator()
+		for qsiter.HasNext() {
+			to := qsiter.Next()
 			e, err := graph.CreateEdge(charLabel(symbol), nodes[from], nodes[to])
 			if err != nil {
 				return "", err
@@ -173,7 +177,9 @@ func (dfa DFA) ToDot() (string, error) {
 	start.SetShape(cgraph.PointShape)
 	nodes := make(map[State]*cgraph.Node)
 	si, fi := 0, 0
-	for s := range dfa.q {
+	qiter := dfa.q.Iterator()
+	for qiter.HasNext() {
+		s := qiter.Next()
 		n, err := graph.CreateNode(fmt.Sprintf("%v", guid.New())) // assign unique node id
 		if err != nil {
 			return "", err

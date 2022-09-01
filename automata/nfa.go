@@ -5,7 +5,7 @@ import (
 	"github.com/goropikari/golex/utils/guid"
 )
 
-type NFATransition map[collection.Pair[State, rune]]collection.Set[State]
+type NFATransition map[collection.Pair[State, rune]]*collection.Set[State]
 
 func (t NFATransition) Copy() NFATransition {
 	delta := make(NFATransition)
@@ -17,20 +17,20 @@ func (t NFATransition) Copy() NFATransition {
 }
 
 type NFA struct {
-	q collection.Set[State]
+	q *collection.Set[State]
 	// sigma      collection.Set[rune]
 	delta      NFATransition
-	initStates collection.Set[State]
-	finStates  collection.Set[State]
+	initStates *collection.Set[State]
+	finStates  *collection.Set[State]
 	regexID    RegexID
 }
 
 func NewNFA(
-	q collection.Set[State],
+	q *collection.Set[State],
 	// sigma collection.Set[rune],
 	delta NFATransition,
-	initStates collection.Set[State],
-	finStates collection.Set[State]) NFA {
+	initStates *collection.Set[State],
+	finStates *collection.Set[State]) NFA {
 	return NFA{
 		q: q,
 		// sigma:      sigma,
@@ -49,7 +49,9 @@ func (nfa NFA) Concat(other NFA) NFA {
 	nfa = nfa.Copy()
 	other = other.Copy()
 
-	for st := range other.q {
+	qiter := other.q.Iterator()
+	for qiter.HasNext() {
+		st := qiter.Next()
 		nfa.q.Insert(st)
 	}
 
@@ -57,14 +59,19 @@ func (nfa NFA) Concat(other NFA) NFA {
 		nfa.delta[tr] = ss
 	}
 
-	for from := range nfa.finStates {
-		for to := range other.initStates {
+	fiter := nfa.finStates.Iterator()
+	for fiter.HasNext() {
+		from := fiter.Next()
+		iiter := other.initStates.Iterator()
+		for iiter.HasNext() {
+			to := iiter.Next()
 			if _, ok := nfa.delta[collection.NewPair(from, epsilon)]; ok {
 				nfa.delta[collection.NewPair(from, epsilon)].Insert(to)
 			} else {
 				nfa.delta[collection.NewPair(from, epsilon)] = collection.NewSet[State]().Insert(to)
 			}
 		}
+
 	}
 
 	return NewNFA(nfa.q, nfa.delta, nfa.initStates, other.finStates)
@@ -74,7 +81,9 @@ func (nfa NFA) Sum(other NFA) NFA {
 	nfa = nfa.Copy()
 	other = other.Copy()
 
-	for st := range other.q {
+	qiter := other.q.Iterator()
+	for qiter.HasNext() {
+		st := qiter.Next()
 		nfa.q.Insert(st)
 	}
 
@@ -82,11 +91,15 @@ func (nfa NFA) Sum(other NFA) NFA {
 		nfa.delta[tr] = ss
 	}
 
-	for st := range other.initStates {
+	iiter := other.initStates.Iterator()
+	for iiter.HasNext() {
+		st := iiter.Next()
 		nfa.initStates.Insert(st)
 	}
 
-	for st := range other.finStates {
+	fiter := other.finStates.Iterator()
+	for fiter.HasNext() {
+		st := fiter.Next()
 		nfa.finStates.Insert(st)
 	}
 
@@ -103,7 +116,9 @@ func (nfa NFA) Star() NFA {
 
 	nfa.delta[collection.NewPair(startFinState, epsilon)] = nfa.initStates
 
-	for from := range nfa.finStates {
+	fiter := nfa.finStates.Iterator()
+	for fiter.HasNext() {
+		from := fiter.Next()
 		pair := collection.NewPair(from, epsilon)
 		if _, ok := nfa.delta[pair]; ok {
 			nfa.delta[pair].Insert(startFinState)
@@ -117,11 +132,13 @@ func (nfa NFA) Star() NFA {
 
 func (nfa NFA) ToImNFA() ImdNFA {
 	nfa = nfa.relabelStateIDs()
-	maxID := len(nfa.q)
+	maxID := nfa.q.Size()
 	n := maxID + 1
 	stIDToRegID := make([]RegexID, n)
-	for st := range nfa.q {
-		stIDToRegID[int(st.GetID())] = st.regexID
+	qiter := nfa.q.Iterator()
+	for qiter.HasNext() {
+		st := qiter.Next()
+		stIDToRegID[st.GetID()] = st.regexID
 	}
 	delta := make(ImdNFATransition)
 	for pair, tos := range nfa.delta {
@@ -146,7 +163,9 @@ func (nfa NFA) relabelStateIDs() NFA {
 	id := StateID(1)
 	oldToNewID := map[StateID]StateID{}
 	newq := collection.NewSet[State]()
-	for oldst := range nfa.q {
+	qiter := nfa.q.Iterator()
+	for qiter.HasNext() {
+		oldst := qiter.Next()
 		newst := NewState(id)
 		newst.SetRegexID(oldst.GetRawRegexID())
 		newq.Insert(newst)
@@ -162,7 +181,9 @@ func (nfa NFA) relabelStateIDs() NFA {
 		newfrom := NewState(oldToNewID[oldfrom.GetID()])
 		newfrom.SetRegexID(oldfrom.GetRawRegexID())
 		newtos := collection.NewSet[State]()
-		for oldto := range tos {
+		titer := tos.Iterator()
+		for titer.HasNext() {
+			oldto := titer.Next()
 			newto := NewState(oldToNewID[oldto.GetID()])
 			newto.SetRegexID(oldto.GetRawRegexID())
 			newtos.Insert(newto)
@@ -171,14 +192,18 @@ func (nfa NFA) relabelStateIDs() NFA {
 	}
 
 	newInitStates := collection.NewSet[State]()
-	for oldst := range nfa.initStates {
+	iiter := nfa.initStates.Iterator()
+	for iiter.HasNext() {
+		oldst := iiter.Next()
 		newst := NewState(oldToNewID[oldst.GetID()])
 		newst.SetRegexID(oldst.GetRawRegexID())
 		newInitStates.Insert(newst)
 	}
 
 	newFinStates := collection.NewSet[State]()
-	for oldst := range nfa.finStates {
+	fiter := nfa.finStates.Iterator()
+	for fiter.HasNext() {
+		oldst := fiter.Next()
 		newst := NewState(oldToNewID[oldst.GetID()])
 		newst.SetRegexID(oldst.GetRawRegexID())
 		newFinStates.Insert(newst)
@@ -187,9 +212,11 @@ func (nfa NFA) relabelStateIDs() NFA {
 	return NewNFA(newq, newdelta, newInitStates, newFinStates)
 }
 
-func buildStateSet(n int, tos collection.Set[State]) *StateSet {
+func buildStateSet(n int, tos *collection.Set[State]) *StateSet {
 	bs := NewStateSet(n)
-	for to := range tos {
+	titer := tos.Iterator()
+	for titer.HasNext() {
+		to := titer.Next()
 		bs = bs.Insert(to.GetID())
 	}
 	return bs
@@ -203,19 +230,25 @@ func (nfa *NFA) SetRegexID(id RegexID) {
 	finStates := collection.NewSet[State]()
 	delta := make(NFATransition)
 
-	for st := range nfa2.q {
+	qiter := nfa2.q.Iterator()
+	for qiter.HasNext() {
+		st := qiter.Next()
 		if nfa.finStates.Contains(st) {
 			st.SetRegexID(id)
 		}
 		q.Insert(st)
 	}
-	for st := range nfa2.initStates {
+	iiter := nfa2.initStates.Iterator()
+	for iiter.HasNext() {
+		st := iiter.Next()
 		if nfa.finStates.Contains(st) {
 			st.SetRegexID(id)
 		}
 		initStates.Insert(st)
 	}
-	for st := range nfa2.finStates {
+	fiter := nfa2.finStates.Iterator()
+	for fiter.HasNext() {
+		st := fiter.Next()
 		st.SetRegexID(id)
 		finStates.Insert(st)
 	}
@@ -226,7 +259,9 @@ func (nfa *NFA) SetRegexID(id RegexID) {
 		}
 		ru := pair.Second
 		nss := collection.NewSet[State]()
-		for to := range sts {
+		siter := sts.Iterator()
+		for siter.HasNext() {
+			to := siter.Next()
 			if nfa.finStates.Contains(to) {
 				to.SetRegexID(id)
 			}

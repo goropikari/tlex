@@ -30,13 +30,13 @@ func (d *BitsetDict[T]) Get(bs Bitset) (T, bool) {
 	return v, ok
 }
 
-func (d *BitsetDict[T]) Keys() map[Sha]Bitset {
-	return d.key
-}
+// func (d *BitsetDict[T]) Keys() map[Sha]Bitset {
+// 	return d.key
+// }
 
-func (d *BitsetDict[T]) Dict() map[Sha]T {
-	return d.dict
-}
+// func (d *BitsetDict[T]) Dict() map[Sha]T {
+// 	return d.dict
+// }
 
 func (d *BitsetDict[T]) Contains(bs Bitset) bool {
 	sha := sha256.Sum256(bs.x)

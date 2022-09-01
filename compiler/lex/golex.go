@@ -41,7 +41,7 @@ func Generate(r *bufio.Reader, pkgName string, outfile string) {
 	id := 1
 	stToID[dfa.GetInitState()] = id
 	id++
-	for st := range dfa.GetStates() {
+	for _, st := range dfa.GetStates() {
 		if st == dfa.GetInitState() {
 			continue
 		}
@@ -101,10 +101,10 @@ func genStIdToRegexID(idToSt []automata.State) string {
 	return buf.String()
 }
 
-func genFinStates(idToSt []automata.State, finStates collection.Set[automata.State]) string {
+func genFinStates(idToSt []automata.State, finStates *collection.Set[automata.State]) string {
 	var buf bytes.Buffer
 	for i, st := range idToSt {
-		if _, ok := finStates[st]; ok {
+		if finStates.Contains(st) {
 			buf.WriteString(fmt.Sprintf("%v: {},\n", i))
 		}
 	}
