@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"math"
 	"strings"
 
 	"github.com/goccy/go-graphviz"
@@ -14,7 +13,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-const blackHole = 0
+const blackHoleStateID = 0
 
 type DFATransition map[collection.Tuple[State, rune]]State
 
@@ -74,7 +73,7 @@ func (dfa DFA) Accept(s string) (TokenID, bool) {
 
 	for _, ru := range []rune(s) {
 		currSt = dfa.Step(currSt, ru)
-		if currSt.GetID() == blackHole {
+		if currSt.GetID() == blackHoleStateID {
 			return 0, false
 		}
 		if (currSt == State{}) {
@@ -96,7 +95,7 @@ func (dfa DFA) Copy() DFA {
 
 func (dfa DFA) Totalize() DFA {
 	dfa = dfa.Copy()
-	bhState := NewState(blackHole)
+	bhState := NewState(blackHoleStateID)
 	states := dfa.q.Copy().Insert(bhState)
 	delta := dfa.delta.Copy()
 	changed := false
@@ -142,11 +141,11 @@ func (dfa DFA) Reverse() NFA {
 func (dfa DFA) RemoveBH() DFA {
 	dfa = dfa.Copy()
 
-	bhSt := NewState(blackHole)
+	bhSt := NewState(blackHoleStateID)
 	dfa.q.Erase(bhSt)
 
 	for pair, to := range dfa.delta {
-		if to.GetID() == blackHole {
+		if to.GetID() == blackHoleStateID {
 			delete(dfa.delta, pair)
 		}
 	}
@@ -377,7 +376,7 @@ func (dfa DFA) ToDot() (string, error) {
 			n.SetShape(cgraph.DoubleCircleShape)
 			n.SetLabel(fmt.Sprintf("F%v_%v", fi, toStateTokenID(s.GetTokenID())))
 			fi++
-		} else if s.GetID() == blackHole {
+		} else if s.GetID() == blackHoleStateID {
 			// n.SetLabel(blackHole)
 			n.SetLabel("BH")
 		} else {
@@ -412,7 +411,7 @@ func (dfa DFA) ToDot() (string, error) {
 }
 
 func toStateTokenID(id TokenID) TokenID {
-	if id == TokenID(math.MaxInt) {
+	if id == nonFinStateTokenID {
 		return 0
 	}
 

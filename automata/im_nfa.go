@@ -5,7 +5,6 @@ import (
 	"container/list"
 	"fmt"
 	"log"
-	stdmath "math"
 
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
@@ -29,32 +28,6 @@ type ImdNFA struct {
 	finStates   *StateSet
 }
 
-type allStateIDIterator struct {
-	maxID  int
-	currID int
-}
-
-func newAllStateIDIterator(maxID int) *allStateIDIterator {
-	return &allStateIDIterator{
-		maxID:  maxID,
-		currID: 1, // StateID = 0 is blackhole state
-	}
-}
-
-func (iter *allStateIDIterator) HasNext() bool {
-	return iter.currID <= iter.maxID
-}
-
-func (iter *allStateIDIterator) Next() StateID {
-	ret := StateID(iter.currID)
-	iter.currID++
-	return ret
-}
-
-func (nfa ImdNFA) iterator() *allStateIDIterator {
-	return newAllStateIDIterator(nfa.maxID)
-}
-
 func (nfa ImdNFA) buildEClosures() []*StateSet {
 	ecl := make([]*StateSet, nfa.numst())
 	iter := nfa.iterator()
@@ -72,46 +45,95 @@ func (nfa ImdNFA) numst() int {
 	return nfa.maxID + 1
 }
 
+func (nfa ImdNFA) genStateID() StateID {
+	return StateID(guid.New())
+}
+
+func (nfa ImdNFA) calRegID(ss *StateSet) TokenID {
+	regID := nonFinStateTokenID
+	iter := ss.iterator()
+	for iter.HasNext() {
+		sid := iter.Next()
+		regID = math.Min(regID, nfa.stIDToRegID[sid])
+	}
+
+	return regID
+}
+
 func (nfa ImdNFA) ToDFA() DFA {
+	states, delta, initState, finStates := nfa.subsetConstruction()
+
+	dfaStates := collection.NewSet[State]()
+	ssToSt := NewStateSetDict[State]()
+	siter := states.iterator()
+	for siter.HasNext() {
+		ss, newSid := siter.Next()
+		regID := nfa.calRegID(ss)
+		st := NewStateWithTokenID(newSid, regID)
+		dfaStates.Insert(st)
+		ssToSt.Set(ss, st)
+	}
+
+	diter := delta.iterator()
+	dfaDelta := make(DFATransition)
+	for diter.HasNext() {
+		fromSs, mp := diter.Next()
+		for ru, toSs := range mp {
+			fromSt, _ := ssToSt.Get(fromSs)
+			toSt, _ := ssToSt.Get(toSs)
+			dfaDelta[collection.NewTuple(fromSt, ru)] = toSt
+		}
+	}
+
+	dfaInitState, _ := ssToSt.Get(initState)
+
+	dfaFinStates := collection.NewSet[State]()
+	fiter := finStates.iterator()
+	for fiter.HasNext() {
+		ss, _ := fiter.Next()
+		st, _ := ssToSt.Get(ss)
+		dfaFinStates.Insert(st)
+	}
+
+	return NewDFA(dfaStates, dfaDelta, dfaInitState, dfaFinStates)
+}
+
+func (nfa ImdNFA) subsetConstruction() (states *StateSetDict[StateID], delta *StateSetDict[map[rune]*StateSet], initState *StateSet, finStates *StateSetDict[Nothing]) {
 	ecl := nfa.buildEClosures()
 
-	initState := nfa.initStates.Copy()
-	initIter := nfa.initStates.iterator()
+	initState = nfa.initStates.Copy()
+	initIter := initState.iterator()
 	for initIter.HasNext() {
 		sid := initIter.Next()
 		initState = initState.Union(ecl[sid])
 	}
 
+	visited := NewStateSetDict[StateID]()
+	finStates = NewStateSetDict[Nothing]()
+	if initState.Intersection(nfa.finStates).IsAny() {
+		finStates.Set(initState, nothing)
+	}
+	visited.Set(initState, nfa.genStateID())
+
+	delta = NewStateSetDict[map[rune]*StateSet]()
+
 	que := list.New() // list of *StateSet
 	que.PushBack(initState)
-
-	visited := map[Sha]*StateSet{}
-	finStates := map[Sha]*StateSet{}
-	initSha := initState.Sha256()
-	if initState.Intersection(nfa.finStates).IsAny() {
-		finStates[initSha] = initState
-	}
-	visited[initSha] = initState
-
-	delta := make(map[collection.Tuple[Sha, rune]]Sha)
-
 	for que.Len() > 0 {
 		top := que.Front()
 		que.Remove(top)
-		froms := top.Value.(*StateSet)
+		from := top.Value.(*StateSet)
 
 		for _, ru := range SupportedChars {
 			tos := NewStateSet(nfa.numst())
-			fromIter := froms.iterator()
+			fromIter := from.iterator()
 			for fromIter.HasNext() {
 				fromStID := fromIter.Next()
 				if nxs, ok := nfa.delta.step(fromStID, ru); ok {
 					nxsIter := nxs.iterator()
 					for nxsIter.HasNext() {
 						nxStID := nxsIter.Next()
-						if nxs.Contains(nxStID) {
-							tos = tos.Union(ecl[nxStID])
-						}
+						tos = tos.Union(ecl[nxStID])
 					}
 				}
 			}
@@ -119,61 +141,26 @@ func (nfa ImdNFA) ToDFA() DFA {
 			if tos.IsEmpty() {
 				continue
 			}
-			to := tos.Sha256()
 			if tos.Intersection(nfa.finStates).IsAny() {
-				finStates[to] = tos
+				finStates.Set(tos, nothing)
 			}
-			delta[collection.NewTuple(froms.Sha256(), ru)] = to
-			if _, ok := visited[to]; ok {
+			if v, ok := delta.Get(from); ok {
+				v[ru] = tos
+				delta.Set(from, v)
+			} else {
+				mp := map[rune]*StateSet{}
+				mp[ru] = tos
+				delta.Set(from, mp)
+			}
+			if visited.Contains(tos) {
 				continue
 			}
-			visited[to] = tos
+			visited.Set(tos, nfa.genStateID())
 			que.PushBack(tos)
 		}
 	}
 
-	shaToStateID := map[Sha]StateID{}
-	for key := range visited {
-		shaToStateID[key] = StateID(guid.New())
-	}
-	stIDToState := map[StateID]State{}
-	dfaStates := collection.NewSet[State]()
-	for sha, id := range shaToStateID {
-		st := NewState(id)
-		if v, ok := visited[sha]; ok {
-			if v.Intersection(nfa.finStates).IsAny() {
-				rid := TokenID(stdmath.MaxInt)
-				viter := v.iterator()
-				for viter.HasNext() {
-					sid := viter.Next()
-					rid = math.Min(rid, nfa.stIDToRegID[sid])
-				}
-
-				st.SetTokenID(rid)
-			}
-		}
-		dfaStates.Insert(st)
-		stIDToState[id] = st
-	}
-
-	dfatrans := make(DFATransition)
-	for pair, to := range delta {
-		fromSha := pair.First
-		ru := pair.Second
-		dfatrans[collection.NewTuple(stIDToState[shaToStateID[fromSha]], ru)] = stIDToState[shaToStateID[to]]
-	}
-
-	dfaFinStates := collection.NewSet[State]()
-	for s := range finStates {
-		dfaFinStates.Insert(stIDToState[shaToStateID[s]])
-	}
-
-	return DFA{
-		q:         dfaStates,
-		delta:     dfatrans,
-		initState: stIDToState[shaToStateID[initSha]],
-		finStates: dfaFinStates,
-	}
+	return visited, delta, initState, finStates
 }
 
 func (nfa ImdNFA) eclosure(x StateID) *StateSet {
@@ -203,6 +190,31 @@ func (nfa ImdNFA) eclosure(x StateID) *StateSet {
 	return closure
 }
 
+func (nfa ImdNFA) iterator() *allStateIDIterator {
+	return newAllStateIDIterator(nfa.maxID)
+}
+
+type allStateIDIterator struct {
+	maxID  int
+	currID int
+}
+
+func newAllStateIDIterator(maxID int) *allStateIDIterator {
+	return &allStateIDIterator{
+		maxID:  maxID,
+		currID: 1, // StateID = 0 is blackhole state
+	}
+}
+
+func (iter *allStateIDIterator) HasNext() bool {
+	return iter.currID <= iter.maxID
+}
+
+func (iter *allStateIDIterator) Next() StateID {
+	ret := StateID(iter.currID)
+	iter.currID++
+	return ret
+}
 func (nfa ImdNFA) ToDot() (string, error) {
 	g := graphviz.New()
 	graph, err := g.Graph()

@@ -8,6 +8,7 @@ import (
 )
 
 const epsilon = 'ε'
+const nonFinStateTokenID TokenID = stdmath.MaxInt
 
 const SupportedChars = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ \t\n\r"
 
@@ -18,6 +19,9 @@ const SupportedChars = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVW
 type TokenID int
 type StateID int
 type Sha = [sha256.Size]byte
+type Nothing struct{}
+
+var nothing = Nothing{}
 
 type State struct {
 	id      StateID
@@ -25,7 +29,14 @@ type State struct {
 }
 
 func NewState(id StateID) State {
-	return State{id: id, tokenID: TokenID(stdmath.MaxInt)}
+	return State{id: id, tokenID: TokenID(nonFinStateTokenID)}
+}
+
+func NewStateWithTokenID(id StateID, tokenID TokenID) State {
+	return State{
+		id:      id,
+		tokenID: tokenID,
+	}
 }
 
 func (st State) GetID() StateID {
@@ -33,7 +44,7 @@ func (st State) GetID() StateID {
 }
 
 func (st State) GetTokenID() TokenID {
-	if int(st.tokenID) == stdmath.MaxInt {
+	if st.tokenID == nonFinStateTokenID {
 		return 0
 	}
 	return st.tokenID
@@ -92,10 +103,6 @@ func (ss *StateSet) Contains(x StateID) bool {
 	return ss.bs.Contains(int(x))
 }
 
-func (ss *StateSet) Sha256() Sha {
-	return sha256.Sum256(ss.bs.Bytes())
-}
-
 type stateSetIterator struct {
 	maxID  StateID
 	currID StateID
@@ -138,6 +145,66 @@ func (iter *stateSetIterator) Next() StateID {
 
 func (ss *StateSet) iterator() *stateSetIterator {
 	return newStateSetIterator(ss)
+}
+
+type StateSetDict[T any] struct {
+	dict    *collection.BitsetDict[T]
+	shaToSs map[Sha]*StateSet
+}
+
+func NewStateSetDict[T any]() *StateSetDict[T] {
+	return &StateSetDict[T]{
+		dict:    collection.NewBitsetDict[T](),
+		shaToSs: make(map[Sha]*StateSet),
+	}
+}
+
+func (d *StateSetDict[T]) Set(ss *StateSet, v T) *StateSetDict[T] {
+	d.dict.Set(ss.bs, v)
+	sha := sha256.Sum256(ss.bs.Bytes())
+	d.shaToSs[sha] = ss
+	return d
+}
+
+func (d *StateSetDict[T]) Get(ss *StateSet) (T, bool) {
+	v, ok := d.dict.Get(ss.bs)
+	return v, ok
+}
+
+func (d *StateSetDict[T]) Contains(ss *StateSet) bool {
+	return d.dict.Contains(ss.bs)
+}
+
+func (d *StateSetDict[T]) iterator() *stateSetDictIterator[T] {
+	stSets := make([]*StateSet, 0)
+	for _, ss := range d.shaToSs {
+		stSets = append(stSets, ss)
+	}
+
+	return &stateSetDictIterator[T]{
+		d:       d,
+		stSets:  stSets,
+		length:  len(stSets),
+		currIdx: 0,
+	}
+}
+
+type stateSetDictIterator[T any] struct {
+	d       *StateSetDict[T]
+	stSets  []*StateSet
+	length  int
+	currIdx int
+}
+
+func (iter *stateSetDictIterator[T]) HasNext() bool {
+	return iter.currIdx < iter.length
+}
+
+func (iter *stateSetDictIterator[T]) Next() (*StateSet, T) {
+	ss := iter.stSets[iter.currIdx]
+	v, _ := iter.d.Get(ss)
+	iter.currIdx++
+	return ss, v
 }
 
 func charLabel(s string) string {
