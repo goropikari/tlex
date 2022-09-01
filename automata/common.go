@@ -80,6 +80,10 @@ func (ss *StateSet) Intersection(other *StateSet) *StateSet {
 	}
 }
 
+func (ss *StateSet) IsAny() bool {
+	return !ss.IsEmpty()
+}
+
 func (ss *StateSet) IsEmpty() bool {
 	return ss.bs.IsZero()
 }

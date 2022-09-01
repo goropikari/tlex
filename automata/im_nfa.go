@@ -72,7 +72,7 @@ func (nfa ImdNFA) ToDFA() DFA {
 	visited := map[Sha]*StateSet{}
 	finStates := map[Sha]*StateSet{}
 	initSha := initState.Sha256()
-	if !initState.Intersection(nfa.finStates).IsEmpty() {
+	if initState.Intersection(nfa.finStates).IsAny() {
 		finStates[initSha] = initState
 	}
 	visited[initSha] = initState
@@ -104,7 +104,7 @@ func (nfa ImdNFA) ToDFA() DFA {
 				continue
 			}
 			to := tos.Sha256()
-			if !tos.Intersection(nfa.finStates).IsEmpty() {
+			if tos.Intersection(nfa.finStates).IsAny() {
 				finStates[to] = tos
 			}
 			delta[collection.NewTuple(froms.Sha256(), ru)] = to
@@ -125,7 +125,7 @@ func (nfa ImdNFA) ToDFA() DFA {
 	for sha, id := range shaToStateID {
 		st := NewState(id)
 		if v, ok := visited[sha]; ok {
-			if !v.Intersection(nfa.finStates).IsEmpty() {
+			if v.Intersection(nfa.finStates).IsAny() {
 				rid := TokenID(stdmath.MaxInt)
 				viter := v.iterator()
 				for viter.HasNext() {
