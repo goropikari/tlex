@@ -48,7 +48,7 @@ func (gen *CodeGenerator) VisitSymbolExpr(expr SymbolExpr) {
 	gen.nfa = automata.NewNFA(
 		collection.NewSet[automata.State]().Insert(from).Insert(to),
 		automata.NFATransition{
-			collection.NewTuple(from, expr.sym): collection.NewSet[automata.State]().Insert(to),
+			collection.NewPair(from, expr.sym): collection.NewSet[automata.State]().Insert(to),
 		},
 		collection.NewSet[automata.State]().Insert(from),
 		collection.NewSet[automata.State]().Insert(to),
@@ -65,7 +65,7 @@ func (gen *CodeGenerator) VisitDotExpr(expr DotExpr) {
 		to := automata.NewState(automata.StateID(guid.New()))
 		states = states.Insert(to)
 		finStates = finStates.Insert(to)
-		trans[collection.NewTuple(from, ru)] = collection.NewSet[automata.State]().Insert(to)
+		trans[collection.NewPair(from, ru)] = collection.NewSet[automata.State]().Insert(to)
 	}
 
 	gen.nfa = automata.NewNFA(

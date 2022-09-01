@@ -5,7 +5,7 @@ import (
 	"github.com/goropikari/golex/utils/guid"
 )
 
-type NFATransition map[collection.Tuple[State, rune]]collection.Set[State]
+type NFATransition map[collection.Pair[State, rune]]collection.Set[State]
 
 func (t NFATransition) Copy() NFATransition {
 	delta := make(NFATransition)
@@ -59,10 +59,10 @@ func (nfa NFA) Concat(other NFA) NFA {
 
 	for from := range nfa.finStates {
 		for to := range other.initStates {
-			if _, ok := nfa.delta[collection.NewTuple(from, epsilon)]; ok {
-				nfa.delta[collection.NewTuple(from, epsilon)].Insert(to)
+			if _, ok := nfa.delta[collection.NewPair(from, epsilon)]; ok {
+				nfa.delta[collection.NewPair(from, epsilon)].Insert(to)
 			} else {
-				nfa.delta[collection.NewTuple(from, epsilon)] = collection.NewSet[State]().Insert(to)
+				nfa.delta[collection.NewPair(from, epsilon)] = collection.NewSet[State]().Insert(to)
 			}
 		}
 	}
@@ -101,10 +101,10 @@ func (nfa NFA) Star() NFA {
 
 	nfa.q.Insert(startFinState)
 
-	nfa.delta[collection.NewTuple(startFinState, epsilon)] = nfa.initStates
+	nfa.delta[collection.NewPair(startFinState, epsilon)] = nfa.initStates
 
 	for from := range nfa.finStates {
-		pair := collection.NewTuple(from, epsilon)
+		pair := collection.NewPair(from, epsilon)
 		if _, ok := nfa.delta[pair]; ok {
 			nfa.delta[pair].Insert(startFinState)
 		} else {
@@ -127,7 +127,7 @@ func (nfa NFA) ToImNFA() ImdNFA {
 	for pair, tos := range nfa.delta {
 		from := pair.First
 		ru := pair.Second
-		delta[collection.NewTuple(from.GetID(), ru)] = buildStateSet(n, tos)
+		delta[collection.NewPair(from.GetID(), ru)] = buildStateSet(n, tos)
 	}
 	initStates := buildStateSet(n, nfa.initStates)
 	finStates := buildStateSet(n, nfa.finStates)
@@ -167,7 +167,7 @@ func (nfa NFA) relabelStateIDs() NFA {
 			newto.SetRegexID(oldto.GetRawRegexID())
 			newtos.Insert(newto)
 		}
-		newdelta[collection.NewTuple(newfrom, ru)] = newtos
+		newdelta[collection.NewPair(newfrom, ru)] = newtos
 	}
 
 	newInitStates := collection.NewSet[State]()
@@ -232,7 +232,7 @@ func (nfa *NFA) SetRegexID(id RegexID) {
 			}
 			nss.Insert(to)
 		}
-		delta[collection.NewTuple(from, ru)] = nss
+		delta[collection.NewPair(from, ru)] = nss
 	}
 
 	nfa2 = NewNFA(q, delta, initStates, finStates)

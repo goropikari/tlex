@@ -8,10 +8,10 @@ import (
 	"github.com/goropikari/golex/utils/guid"
 )
 
-type ImdNFATransition map[collection.Tuple[StateID, rune]]*StateSet
+type ImdNFATransition map[collection.Pair[StateID, rune]]*StateSet
 
 func (trans ImdNFATransition) step(x StateID, ru rune) (*StateSet, bool) {
-	nxs, ok := trans[collection.NewTuple(x, ru)]
+	nxs, ok := trans[collection.NewPair(x, ru)]
 	return nxs, ok
 }
 
@@ -76,7 +76,7 @@ func (nfa ImdNFA) ToDFA() DFA {
 		for ru, toSs := range mp {
 			fromSt, _ := ssToSt.Get(fromSs)
 			toSt, _ := ssToSt.Get(toSs)
-			dfaDelta[collection.NewTuple(fromSt, ru)] = toSt
+			dfaDelta[collection.NewPair(fromSt, ru)] = toSt
 		}
 	}
 

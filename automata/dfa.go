@@ -6,7 +6,7 @@ import (
 
 const blackHoleStateID = 0
 
-type DFATransition map[collection.Tuple[State, rune]]State
+type DFATransition map[collection.Pair[State, rune]]State
 
 func (t DFATransition) Copy() DFATransition {
 	delta := make(DFATransition)
@@ -76,7 +76,7 @@ func (dfa DFA) Accept(s string) (RegexID, bool) {
 }
 
 func (dfa DFA) Step(st State, ru rune) State {
-	pair := collection.NewTuple(st, ru)
+	pair := collection.NewPair(st, ru)
 	return dfa.delta[pair]
 }
 
@@ -92,7 +92,7 @@ func (dfa DFA) Totalize() DFA {
 	changed := false
 	for _, ru := range SupportedChars {
 		for st := range dfa.q {
-			tu := collection.NewTuple(st, ru)
+			tu := collection.NewPair(st, ru)
 			if _, ok := dfa.delta[tu]; !ok {
 				changed = true
 				delta[tu] = bhState
@@ -113,7 +113,7 @@ func (dfa DFA) Reverse() NFA {
 	for pair, ns := range dfa.delta {
 		from := pair.First
 		ru := pair.Second
-		tu := collection.NewTuple(ns, ru)
+		tu := collection.NewPair(ns, ru)
 		if _, ok := delta[tu]; ok {
 			delta[tu].Insert(from)
 		} else {
@@ -249,8 +249,8 @@ func (dfa DFA) grouping() []*stateGroup {
 					s1 := gss[j]
 					isSameGroup := true
 					for _, ru := range SupportedChars {
-						ns0 := dfa.delta[collection.NewTuple(s0, ru)]
-						ns1 := dfa.delta[collection.NewTuple(s1, ru)]
+						ns0 := dfa.delta[collection.NewPair(s0, ru)]
+						ns1 := dfa.delta[collection.NewPair(s1, ru)]
 						// If ns0 and ns1 belong to different groups, s0 and s1 belong to other groups.
 						// Then current group is split.
 						if oldStUF.find(ns0) != oldStUF.find(ns1) {
@@ -319,7 +319,7 @@ func (dfa DFA) LexerMinimize() DFA {
 		from := uf.find(pair.First)
 		ru := pair.Second
 		ns = uf.find(ns)
-		delta[collection.NewTuple(from, ru)] = ns
+		delta[collection.NewPair(from, ru)] = ns
 	}
 
 	finStates := collection.NewSet[State]()

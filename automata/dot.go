@@ -201,11 +201,11 @@ func (dfa DFA) ToDot() (string, error) {
 	}
 
 	// add edge labels
-	edges := make(map[collection.Tuple[State, State]][]string)
+	edges := make(map[collection.Pair[State, State]][]string)
 	for st, to := range dfa.delta {
 		from := st.First
 		symbol := charLabel(string(st.Second))
-		edges[collection.NewTuple(from, to)] = append(edges[collection.NewTuple(from, to)], symbol)
+		edges[collection.NewPair(from, to)] = append(edges[collection.NewPair(from, to)], symbol)
 	}
 	for edge, labels := range edges {
 		from, to := edge.First, edge.Second
