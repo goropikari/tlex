@@ -16,10 +16,15 @@ import (
 
 type ImdNFATransition map[collection.Tuple[StateID, rune]]*StateSet
 
+func (trans ImdNFATransition) step(x StateID, ru rune) (*StateSet, bool) {
+	nxs, ok := trans[collection.NewTuple(x, ru)]
+	return nxs, ok
+}
+
 type ImdNFA struct {
 	maxID       int
 	stIDToRegID []TokenID
-	delta       map[collection.Tuple[StateID, rune]]*StateSet
+	delta       ImdNFATransition
 	initStates  *StateSet
 	finStates   *StateSet
 }
@@ -50,9 +55,8 @@ func (nfa ImdNFA) iterator() *allStateIDIterator {
 	return newAllStateIDIterator(nfa.maxID)
 }
 
-func (nfa ImdNFA) ToDFA() DFA {
-	numst := nfa.maxID + 1
-	ecl := make([]*StateSet, numst)
+func (nfa ImdNFA) buildEClosures() []*StateSet {
+	ecl := make([]*StateSet, nfa.numst())
 	iter := nfa.iterator()
 	for iter.HasNext() {
 		sid := iter.Next()
@@ -60,12 +64,24 @@ func (nfa ImdNFA) ToDFA() DFA {
 		ecl[sid] = b
 	}
 
+	return ecl
+}
+
+func (nfa ImdNFA) numst() int {
+	// +1 means black hole
+	return nfa.maxID + 1
+}
+
+func (nfa ImdNFA) ToDFA() DFA {
+	ecl := nfa.buildEClosures()
+
 	initState := nfa.initStates.Copy()
 	initIter := nfa.initStates.iterator()
 	for initIter.HasNext() {
 		sid := initIter.Next()
 		initState = initState.Union(ecl[sid])
 	}
+
 	que := list.New() // list of *StateSet
 	que.PushBack(initState)
 
@@ -85,11 +101,11 @@ func (nfa ImdNFA) ToDFA() DFA {
 		froms := top.Value.(*StateSet)
 
 		for _, ru := range SupportedChars {
-			tos := NewStateSet(numst)
+			tos := NewStateSet(nfa.numst())
 			fromIter := froms.iterator()
 			for fromIter.HasNext() {
 				fromStID := fromIter.Next()
-				if nxs, ok := nfa.delta[collection.NewTuple(fromStID, ru)]; ok {
+				if nxs, ok := nfa.delta.step(fromStID, ru); ok {
 					nxsIter := nxs.iterator()
 					for nxsIter.HasNext() {
 						nxStID := nxsIter.Next()
@@ -171,7 +187,7 @@ func (nfa ImdNFA) eclosure(x StateID) *StateSet {
 		que.Remove(front)
 		top := front.Value.(StateID)
 
-		if nxs, ok := nfa.delta[collection.NewTuple(top, epsilon)]; ok {
+		if nxs, ok := nfa.delta.step(top, epsilon); ok {
 			closure = closure.Union(nxs)
 			nxsIter := nxs.iterator()
 			for nxsIter.HasNext() {
