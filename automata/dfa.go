@@ -68,7 +68,7 @@ func (dfa DFA) GetTransitionTable() DFATransition {
 // 	return NewNFA(dfa.q, delta, collection.NewSet[State]().Insert(dfa.initState), dfa.finStates)
 // }
 
-func (dfa DFA) Accept(s string) (TokenID, bool) {
+func (dfa DFA) Accept(s string) (RegexID, bool) {
 	currSt := dfa.initState
 
 	for _, ru := range []rune(s) {
@@ -81,7 +81,7 @@ func (dfa DFA) Accept(s string) (TokenID, bool) {
 		}
 	}
 
-	return currSt.GetTokenID(), dfa.finStates.Contains(currSt)
+	return currSt.GetRegexID(), dfa.finStates.Contains(currSt)
 }
 
 func (dfa DFA) Step(st State, ru rune) State {
@@ -215,12 +215,12 @@ func (uf *stateUnionFind) find(x State) State {
 func (dfa DFA) grouping() []*stateGroup {
 	states := dfa.q.Slice()
 
-	stateSets := make(map[TokenID]collection.Set[State])
+	stateSets := make(map[RegexID]collection.Set[State])
 	for st := range dfa.q {
-		if _, ok := stateSets[st.GetTokenID()]; ok {
-			stateSets[st.GetTokenID()].Insert(st)
+		if _, ok := stateSets[st.GetRegexID()]; ok {
+			stateSets[st.GetRegexID()].Insert(st)
 		} else {
-			stateSets[st.GetTokenID()] = collection.NewSet[State]().Insert(st)
+			stateSets[st.GetRegexID()] = collection.NewSet[State]().Insert(st)
 		}
 	}
 	groups := make([]*stateGroup, 0, len(stateSets))
@@ -374,14 +374,14 @@ func (dfa DFA) ToDot() (string, error) {
 		}
 		if dfa.finStates.Contains(s) {
 			n.SetShape(cgraph.DoubleCircleShape)
-			n.SetLabel(fmt.Sprintf("F%v_%v", fi, toStateTokenID(s.GetTokenID())))
+			n.SetLabel(fmt.Sprintf("F%v_%v", fi, toStateRegexID(s.GetRegexID())))
 			fi++
 		} else if s.GetID() == blackHoleStateID {
 			// n.SetLabel(blackHole)
 			n.SetLabel("BH")
 		} else {
 			n.SetShape(cgraph.CircleShape)
-			n.SetLabel(fmt.Sprintf("S%v_%v", si, toStateTokenID(s.GetTokenID())))
+			n.SetLabel(fmt.Sprintf("S%v_%v", si, toStateRegexID(s.GetRegexID())))
 			si++
 		}
 		nodes[s] = n
@@ -410,8 +410,8 @@ func (dfa DFA) ToDot() (string, error) {
 	return buf.String(), nil
 }
 
-func toStateTokenID(id TokenID) TokenID {
-	if id == nonFinStateTokenID {
+func toStateRegexID(id RegexID) RegexID {
+	if id == nonFinStateRegexID {
 		return 0
 	}
 

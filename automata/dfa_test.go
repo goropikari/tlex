@@ -36,7 +36,7 @@ func TestDFA_Accept(t *testing.T) {
 		given  string
 		// expected
 		accept  bool
-		regexID automata.TokenID
+		regexID automata.RegexID
 	}{
 		{
 			name:    "digits",
@@ -209,7 +209,7 @@ func lexerNFA(regexs []string) automata.NFA {
 	nfas := make([]*automata.NFA, 0)
 	for i, regex := range regexs {
 		nfa := parse(regex)
-		(&nfa).SetTokenID(automata.TokenID(i + 1))
+		(&nfa).SetRegexID(automata.RegexID(i + 1))
 		nfas = append(nfas, &nfa)
 	}
 

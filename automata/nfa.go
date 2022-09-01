@@ -28,7 +28,7 @@ type NFA struct {
 	delta      NFATransition
 	initStates collection.Set[State]
 	finStates  collection.Set[State]
-	tokenID    TokenID
+	regexID    RegexID
 }
 
 func NewNFA(
@@ -43,7 +43,7 @@ func NewNFA(
 		delta:      delta,
 		initStates: initStates,
 		finStates:  finStates,
-		tokenID:    0,
+		regexID:    0,
 	}
 }
 
@@ -125,9 +125,9 @@ func (nfa NFA) ToImNFA() ImdNFA {
 	nfa = nfa.relabelStateIDs()
 	maxID := len(nfa.q)
 	n := maxID + 1
-	stIDToRegID := make([]TokenID, n)
+	stIDToRegID := make([]RegexID, n)
 	for st := range nfa.q {
-		stIDToRegID[int(st.GetID())] = st.tokenID
+		stIDToRegID[int(st.GetID())] = st.regexID
 	}
 	delta := make(ImdNFATransition)
 	for pair, tos := range nfa.delta {
@@ -154,7 +154,7 @@ func (nfa NFA) relabelStateIDs() NFA {
 	newq := collection.NewSet[State]()
 	for oldst := range nfa.q {
 		newst := NewState(id)
-		newst.SetTokenID(oldst.GetRawTokenID())
+		newst.SetRegexID(oldst.GetRawRegexID())
 		newq.Insert(newst)
 		oldToNewID[oldst.GetID()] = id
 		id++
@@ -166,11 +166,11 @@ func (nfa NFA) relabelStateIDs() NFA {
 		ru := pair.Second
 
 		newfrom := NewState(oldToNewID[oldfrom.GetID()])
-		newfrom.SetTokenID(oldfrom.GetRawTokenID())
+		newfrom.SetRegexID(oldfrom.GetRawRegexID())
 		newtos := collection.NewSet[State]()
 		for oldto := range tos {
 			newto := NewState(oldToNewID[oldto.GetID()])
-			newto.SetTokenID(oldto.GetRawTokenID())
+			newto.SetRegexID(oldto.GetRawRegexID())
 			newtos.Insert(newto)
 		}
 		newdelta[collection.NewTuple(newfrom, ru)] = newtos
@@ -179,14 +179,14 @@ func (nfa NFA) relabelStateIDs() NFA {
 	newInitStates := collection.NewSet[State]()
 	for oldst := range nfa.initStates {
 		newst := NewState(oldToNewID[oldst.GetID()])
-		newst.SetTokenID(oldst.GetRawTokenID())
+		newst.SetRegexID(oldst.GetRawRegexID())
 		newInitStates.Insert(newst)
 	}
 
 	newFinStates := collection.NewSet[State]()
 	for oldst := range nfa.finStates {
 		newst := NewState(oldToNewID[oldst.GetID()])
-		newst.SetTokenID(oldst.GetRawTokenID())
+		newst.SetRegexID(oldst.GetRawRegexID())
 		newFinStates.Insert(newst)
 	}
 
@@ -201,7 +201,7 @@ func buildStateSet(n int, tos collection.Set[State]) *StateSet {
 	return bs
 }
 
-func (nfa *NFA) SetTokenID(id TokenID) {
+func (nfa *NFA) SetRegexID(id RegexID) {
 	nfa2 := nfa.Copy()
 
 	q := collection.NewSet[State]()
@@ -211,30 +211,30 @@ func (nfa *NFA) SetTokenID(id TokenID) {
 
 	for st := range nfa2.q {
 		if nfa.finStates.Contains(st) {
-			st.SetTokenID(id)
+			st.SetRegexID(id)
 		}
 		q.Insert(st)
 	}
 	for st := range nfa2.initStates {
 		if nfa.finStates.Contains(st) {
-			st.SetTokenID(id)
+			st.SetRegexID(id)
 		}
 		initStates.Insert(st)
 	}
 	for st := range nfa2.finStates {
-		st.SetTokenID(id)
+		st.SetRegexID(id)
 		finStates.Insert(st)
 	}
 	for pair, sts := range nfa2.delta {
 		from := pair.First
 		if nfa.finStates.Contains(from) {
-			from.SetTokenID(id)
+			from.SetRegexID(id)
 		}
 		ru := pair.Second
 		nss := collection.NewSet[State]()
 		for to := range sts {
 			if nfa.finStates.Contains(to) {
-				to.SetTokenID(id)
+				to.SetRegexID(id)
 			}
 			nss.Insert(to)
 		}
@@ -242,7 +242,7 @@ func (nfa *NFA) SetTokenID(id TokenID) {
 	}
 
 	nfa2 = NewNFA(q, delta, initStates, finStates)
-	nfa2.tokenID = id
+	nfa2.regexID = id
 
 	*nfa = nfa2
 }

@@ -95,7 +95,7 @@ func Generate(r *bufio.Reader, pkgName string, outfile string) {
 func genStIdToRegexID(idToSt []automata.State) string {
 	var buf bytes.Buffer
 	for _, st := range idToSt[1:] {
-		buf.WriteString(fmt.Sprintf("%v,\n", st.GetTokenID()))
+		buf.WriteString(fmt.Sprintf("%v,\n", st.GetRegexID()))
 	}
 
 	return buf.String()
@@ -144,7 +144,7 @@ func lexerDFA(regexs []string) automata.DFA {
 	nfas := make([]*automata.NFA, 0)
 	for i, regex := range regexs {
 		nfa := parse(regex)
-		(&nfa).SetTokenID(automata.TokenID(i + 1))
+		(&nfa).SetRegexID(automata.RegexID(i + 1))
 		nfas = append(nfas, &nfa)
 	}
 

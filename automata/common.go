@@ -8,7 +8,7 @@ import (
 )
 
 const epsilon = 'ε'
-const nonFinStateTokenID TokenID = stdmath.MaxInt
+const nonFinStateRegexID RegexID = stdmath.MaxInt
 
 const SupportedChars = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ \t\n\r"
 
@@ -16,7 +16,7 @@ const SupportedChars = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVW
 
 // const SupportedChars = "abc"
 
-type TokenID int
+type RegexID int
 type StateID int
 type Sha = [sha256.Size]byte
 type Nothing struct{}
@@ -25,17 +25,17 @@ var nothing = Nothing{}
 
 type State struct {
 	id      StateID
-	tokenID TokenID
+	regexID RegexID
 }
 
 func NewState(id StateID) State {
-	return State{id: id, tokenID: TokenID(nonFinStateTokenID)}
+	return State{id: id, regexID: RegexID(nonFinStateRegexID)}
 }
 
-func NewStateWithTokenID(id StateID, tokenID TokenID) State {
+func NewStateWithRegexID(id StateID, regexID RegexID) State {
 	return State{
 		id:      id,
-		tokenID: tokenID,
+		regexID: regexID,
 	}
 }
 
@@ -43,19 +43,19 @@ func (st State) GetID() StateID {
 	return st.id
 }
 
-func (st State) GetTokenID() TokenID {
-	if st.tokenID == nonFinStateTokenID {
+func (st State) GetRegexID() RegexID {
+	if st.regexID == nonFinStateRegexID {
 		return 0
 	}
-	return st.tokenID
+	return st.regexID
 }
 
-func (st State) GetRawTokenID() TokenID {
-	return st.tokenID
+func (st State) GetRawRegexID() RegexID {
+	return st.regexID
 }
 
-func (st *State) SetTokenID(id TokenID) {
-	st.tokenID = id
+func (st *State) SetRegexID(id RegexID) {
+	st.regexID = id
 }
 
 type StateSet struct {
