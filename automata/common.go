@@ -207,6 +207,44 @@ func (iter *stateSetDictIterator[T]) Next() (*StateSet, T) {
 	return ss, v
 }
 
+type stateUnionFind struct {
+	stToID map[State]int
+	idToSt map[int]State
+	uf     *collection.UnionFind
+}
+
+func newStateUnionFind(states []State) *stateUnionFind {
+	stToID := make(map[State]int)
+	idToSt := make(map[int]State)
+	id := 0
+	for _, st := range states {
+		stToID[st] = id
+		idToSt[id] = st
+		id++
+	}
+
+	return &stateUnionFind{
+		stToID: stToID,
+		idToSt: idToSt,
+		uf:     collection.NewUnionFind(len(states)),
+	}
+}
+
+func (uf *stateUnionFind) unite(x, y State) bool {
+	xid := uf.stToID[x]
+	yid := uf.stToID[y]
+	return uf.uf.Unite(xid, yid)
+}
+
+func (uf *stateUnionFind) find(x State) State {
+	id := uf.stToID[x]
+	return uf.idToSt[uf.uf.Find(id)]
+}
+
+func (uf *stateUnionFind) same(x, y State) bool {
+	return uf.find(x) == uf.find(y)
+}
+
 func charLabel(s string) string {
 	switch s {
 	case "\t":

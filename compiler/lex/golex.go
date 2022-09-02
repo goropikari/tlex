@@ -112,10 +112,12 @@ func genFinStates(idToSt []automata.State, finStates *collection.Set[automata.St
 	return buf.String()
 }
 
-func genTransitionTable(stToID map[automata.State]int, idToSt []automata.State, delta automata.DFATransition) string {
+func genTransitionTable(stToID map[automata.State]int, idToSt []automata.State, delta *automata.DFATransition) string {
 	tbl := make(map[int]map[rune]int)
 	var buf bytes.Buffer
-	for pair, to := range delta {
+	iter := delta.Iterator()
+	for iter.HasNext() {
+		pair, to := iter.Next()
 		from := pair.First
 		ru := pair.Second
 		if _, ok := tbl[stToID[from]]; !ok {

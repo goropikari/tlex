@@ -6,25 +6,83 @@ import (
 
 const blackHoleStateID = 0
 
-type DFATransition map[collection.Pair[State, rune]]State
+type DFATransition struct {
+	mp map[collection.Pair[State, rune]]State
+}
 
-func (t DFATransition) Copy() DFATransition {
-	delta := make(DFATransition)
-	for k, v := range t {
-		delta[k] = v
+func NewDFATransition() *DFATransition {
+	return &DFATransition{
+		mp: map[collection.Pair[State, rune]]State{},
+	}
+}
+
+func (trans *DFATransition) Set(from State, ru rune, to State) {
+	trans.mp[collection.NewPair(from, ru)] = to
+}
+
+func (trans *DFATransition) Erase(pair collection.Pair[State, rune]) {
+	delete(trans.mp, pair)
+}
+
+func (trans *DFATransition) step(st State, ru rune) (State, bool) {
+	st, ok := trans.mp[collection.NewPair(st, ru)]
+	return st, ok
+}
+
+func (t *DFATransition) Copy() *DFATransition {
+	delta := NewDFATransition()
+	iter := t.Iterator()
+	for iter.HasNext() {
+		p, to := iter.Next()
+		delta.Set(p.First, p.Second, to)
 	}
 
 	return delta
 }
 
+func (trans *DFATransition) Iterator() *DFATransitionIterator {
+	pairs := make([]collection.Pair[State, rune], 0, len(trans.mp))
+	tos := make([]State, 0, len(pairs))
+	for k, v := range trans.mp {
+		pairs = append(pairs, k)
+		tos = append(tos, v)
+	}
+
+	return &DFATransitionIterator{
+		currIdx: 0,
+		length:  len(pairs),
+		pairs:   pairs,
+		tos:     tos,
+	}
+}
+
+type DFATransitionIterator struct {
+	currIdx int
+	length  int
+	pairs   []collection.Pair[State, rune]
+	tos     []State
+}
+
+func (iter *DFATransitionIterator) HasNext() bool {
+	return iter.currIdx < iter.length
+}
+
+func (iter *DFATransitionIterator) Next() (collection.Pair[State, rune], State) {
+	k := iter.pairs[iter.currIdx]
+	v := iter.tos[iter.currIdx]
+	iter.currIdx++
+
+	return k, v
+}
+
 type DFA struct {
 	q         *collection.Set[State]
-	delta     DFATransition
+	delta     *DFATransition
 	initState State
 	finStates *collection.Set[State]
 }
 
-func NewDFA(q *collection.Set[State], delta DFATransition, initState State, finStates *collection.Set[State]) DFA {
+func NewDFA(q *collection.Set[State], delta *DFATransition, initState State, finStates *collection.Set[State]) DFA {
 	return DFA{
 		q:         q,
 		delta:     delta,
@@ -45,7 +103,7 @@ func (dfa DFA) GetFinStates() *collection.Set[State] {
 	return dfa.finStates
 }
 
-func (dfa DFA) GetTransitionTable() DFATransition {
+func (dfa DFA) GetTransitionTable() *DFATransition {
 	return dfa.delta
 }
 
@@ -63,11 +121,12 @@ func (dfa DFA) Accept(s string) (RegexID, bool) {
 	currSt := dfa.initState
 
 	for _, ru := range []rune(s) {
-		currSt = dfa.Step(currSt, ru)
-		if currSt.GetID() == blackHoleStateID {
+		var ok bool
+		currSt, ok = dfa.Step(currSt, ru)
+		if !ok { // implicit black hole state
 			return 0, false
 		}
-		if (currSt == State{}) {
+		if currSt.GetID() == blackHoleStateID {
 			return 0, false
 		}
 	}
@@ -75,9 +134,8 @@ func (dfa DFA) Accept(s string) (RegexID, bool) {
 	return currSt.GetRegexID(), dfa.finStates.Contains(currSt)
 }
 
-func (dfa DFA) Step(st State, ru rune) State {
-	pair := collection.NewPair(st, ru)
-	return dfa.delta[pair]
+func (dfa DFA) Step(st State, ru rune) (State, bool) {
+	return dfa.delta.step(st, ru)
 }
 
 func (dfa DFA) Copy() DFA {
@@ -94,10 +152,9 @@ func (dfa DFA) Totalize() DFA {
 		qiter := dfa.q.Iterator()
 		for qiter.HasNext() {
 			st := qiter.Next()
-			tu := collection.NewPair(st, ru)
-			if _, ok := dfa.delta[tu]; !ok {
+			if _, ok := dfa.delta.step(st, ru); !ok {
 				changed = true
-				delta[tu] = bhState
+				delta.Set(st, ru, bhState)
 			}
 		}
 	}
@@ -112,7 +169,9 @@ func (dfa DFA) Totalize() DFA {
 func (dfa DFA) Reverse() NFA {
 	dfa = dfa.Totalize()
 	delta := make(NFATransition)
-	for pair, ns := range dfa.delta {
+	iter := dfa.delta.Iterator()
+	for iter.HasNext() {
+		pair, ns := iter.Next()
 		from := pair.First
 		ru := pair.Second
 		tu := collection.NewPair(ns, ru)
@@ -137,9 +196,11 @@ func (dfa DFA) RemoveBH() DFA {
 	bhSt := NewState(blackHoleStateID)
 	dfa.q.Erase(bhSt)
 
-	for pair, to := range dfa.delta {
+	iter := dfa.delta.Iterator()
+	for iter.HasNext() {
+		pair, to := iter.Next()
 		if to.GetID() == blackHoleStateID {
-			delete(dfa.delta, pair)
+			dfa.delta.Erase(pair)
 		}
 	}
 
@@ -167,40 +228,6 @@ func (g *stateGroup) slice() []State {
 	}
 
 	return sts
-}
-
-type stateUnionFind struct {
-	stToID map[State]int
-	idToSt map[int]State
-	uf     *collection.UnionFind
-}
-
-func newStateUnionFind(states []State) *stateUnionFind {
-	stToID := make(map[State]int)
-	idToSt := make(map[int]State)
-	id := 0
-	for _, st := range states {
-		stToID[st] = id
-		idToSt[id] = st
-		id++
-	}
-
-	return &stateUnionFind{
-		stToID: stToID,
-		idToSt: idToSt,
-		uf:     collection.NewUnionFind(len(states)),
-	}
-}
-
-func (uf *stateUnionFind) unite(x, y State) bool {
-	xid := uf.stToID[x]
-	yid := uf.stToID[y]
-	return uf.uf.Unite(xid, yid)
-}
-
-func (uf *stateUnionFind) find(x State) State {
-	id := uf.stToID[x]
-	return uf.idToSt[uf.uf.Find(id)]
 }
 
 // state minimization for lexical analyzer
@@ -255,11 +282,11 @@ func (dfa DFA) grouping() []*stateGroup {
 					s1 := gss[j]
 					isSameGroup := true
 					for _, ru := range SupportedChars {
-						ns0 := dfa.delta[collection.NewPair(s0, ru)]
-						ns1 := dfa.delta[collection.NewPair(s1, ru)]
+						ns0, _ := dfa.delta.step(s0, ru)
+						ns1, _ := dfa.delta.step(s1, ru)
 						// If ns0 and ns1 belong to different groups, s0 and s1 belong to other groups.
 						// Then current group is split.
-						if oldStUF.find(ns0) != oldStUF.find(ns1) {
+						if !oldStUF.same(ns0, ns1) {
 							isSameGroup = false
 							break
 						}
@@ -322,12 +349,14 @@ func (dfa DFA) LexerMinimize() DFA {
 
 	initState := uf.find(dfa.initState)
 
-	delta := make(DFATransition)
-	for pair, ns := range dfa.delta {
+	delta := NewDFATransition()
+	iter := dfa.delta.Iterator()
+	for iter.HasNext() {
+		pair, ns := iter.Next()
 		from := uf.find(pair.First)
 		ru := pair.Second
 		ns = uf.find(ns)
-		delta[collection.NewPair(from, ru)] = ns
+		delta.Set(from, ru, ns)
 	}
 
 	finStates := collection.NewSet[State]()

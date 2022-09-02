@@ -70,13 +70,13 @@ func (nfa ImdNFA) ToDFA() DFA {
 	}
 
 	diter := delta.iterator()
-	dfaDelta := make(DFATransition)
+	dfaDelta := NewDFATransition()
 	for diter.HasNext() {
 		fromSs, mp := diter.Next()
 		for ru, toSs := range mp {
 			fromSt, _ := ssToSt.Get(fromSs)
 			toSt, _ := ssToSt.Get(toSs)
-			dfaDelta[collection.NewPair(fromSt, ru)] = toSt
+			dfaDelta.Set(fromSt, ru, toSt)
 		}
 	}
 
