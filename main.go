@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/goropikari/golex/compiler/lex"
-	"github.com/pkg/profile"
 )
 
 var (
@@ -20,7 +19,7 @@ var (
 func main() {
 	// go get github.com/pkg/profile
 	// go tool pprof -http=":8081" cpu.pprof
-	defer profile.Start(profile.ProfilePath(".")).Stop()
+	// defer profile.Start(profile.ProfilePath(".")).Stop()
 	flag.StringVar(&pkgName, "pkg", "main", "generated go file package name")
 	flag.StringVar(&srcfile, "src", "", "input lexer configuration file: sample.l")
 	flag.StringVar(&outfile, "o", "golex.yy.go", "generated file path")
