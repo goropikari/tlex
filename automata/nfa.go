@@ -149,13 +149,7 @@ func (nfa NFA) ToImNFA() ImdNFA {
 	initStates := buildStateSet(n, nfa.initStates)
 	finStates := buildStateSet(n, nfa.finStates)
 
-	return ImdNFA{
-		maxID:       maxID,
-		stIDToRegID: stIDToRegID,
-		delta:       delta,
-		initStates:  initStates,
-		finStates:   finStates,
-	}
+	return NewImdNFA(maxID, stIDToRegID, delta, initStates, finStates)
 }
 
 func (nfa NFA) relabelStateIDs() NFA {

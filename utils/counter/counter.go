@@ -4,8 +4,8 @@ type Counter struct {
 	cnt int
 }
 
-func NewCounter() *Counter {
-	return &Counter{cnt: 0}
+func NewCounter(start int) *Counter {
+	return &Counter{cnt: start - 1}
 }
 
 func (c *Counter) Generate() int {

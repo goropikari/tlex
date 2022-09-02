@@ -5,7 +5,7 @@ import (
 
 	"github.com/goropikari/golex/collection"
 	"github.com/goropikari/golex/math"
-	"github.com/goropikari/golex/utils/guid"
+	"github.com/goropikari/golex/utils/counter"
 )
 
 type ImdNFATransition map[collection.Pair[StateID, rune]]*StateSet
@@ -16,11 +16,23 @@ func (trans ImdNFATransition) step(x StateID, ru rune) (*StateSet, bool) {
 }
 
 type ImdNFA struct {
+	cnt         *counter.Counter
 	maxID       int
 	stIDToRegID []RegexID
 	delta       ImdNFATransition
 	initStates  *StateSet
 	finStates   *StateSet
+}
+
+func NewImdNFA(maxID int, stIDToRegID []RegexID, delta ImdNFATransition, initStates *StateSet, finStates *StateSet) ImdNFA {
+	return ImdNFA{
+		cnt:         counter.NewCounter(1),
+		maxID:       maxID,
+		stIDToRegID: stIDToRegID,
+		delta:       delta,
+		initStates:  initStates,
+		finStates:   finStates,
+	}
 }
 
 func (nfa ImdNFA) buildEClosures() []*StateSet {
@@ -41,7 +53,7 @@ func (nfa ImdNFA) numst() int {
 }
 
 func (nfa ImdNFA) genStateID() StateID {
-	return StateID(guid.New())
+	return StateID(nfa.cnt.Generate())
 }
 
 func (nfa ImdNFA) calRegID(ss *StateSet) RegexID {
