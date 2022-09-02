@@ -230,132 +230,139 @@ func (g *stateGroup) slice() []State {
 	return sts
 }
 
+const asciiSize = 255
+
+func (dfa DFA) transTable() [][asciiSize]StateID {
+	trans := make([][asciiSize]StateID, dfa.q.Size()+1)
+	iter := dfa.q.Iterator()
+	for iter.HasNext() {
+		from := iter.Next()
+		for _, ru := range SupportedChars {
+			if to, ok := dfa.delta.step(from, ru); ok {
+				trans[from.GetID()][ru] = to.GetID()
+			}
+		}
+	}
+
+	return trans
+}
+
 // state minimization for lexical analyzer
 // Compilers: Principles, Techniques, and Tools, 2ed ed.,  ISBN 9780321486813 (Dragon book)
 // p.181 Algorithm 3.39
 // p.184 3.9.7 State Minimization in Lexical Analyzers
 func (dfa DFA) grouping() []*stateGroup {
-	states := dfa.q.Slice()
-
-	stateSets := make(map[RegexID]*collection.Set[State])
+	numst := dfa.q.Size()
 	qiter := dfa.q.Iterator()
+	regSts := make(map[RegexID][]StateID)
+	stIDToState := make(map[StateID]State)
 	for qiter.HasNext() {
 		st := qiter.Next()
-		if _, ok := stateSets[st.GetRegexID()]; ok {
-			stateSets[st.GetRegexID()].Insert(st)
-		} else {
-			stateSets[st.GetRegexID()] = collection.NewSet[State]().Insert(st)
-		}
-	}
-	groups := make([]*stateGroup, 0, len(stateSets))
-	for _, group := range stateSets {
-		groups = append(groups, NewGroup(group))
+		stID := st.GetID()
+		regID := st.GetRawRegexID()
+		regSts[regID] = append(regSts[regID], stID)
+		stIDToState[stID] = st
 	}
 
-	ngrp := len(groups)
-	isSplit := true
-	for isSplit {
-		isSplit = false
-
-		// old groups
-		oldStUF := newStateUnionFind(states)
-		for _, grp := range groups {
-			gss := grp.slice()
-			if len(gss) == 1 {
-				continue
-			}
-			for i := 0; i < len(gss); i++ {
-				oldStUF.unite(gss[0], gss[i])
-			}
+	grps := make([][]StateID, 0)
+	uf := newStateGrouping(numst)
+	for _, stIDs := range regSts {
+		for _, stID := range stIDs[1:] {
+			uf.Unite(stIDs[0], stID)
 		}
+		grps = append(grps, stIDs)
+	}
 
-		// new groups
-		newStUF := newStateUnionFind(states)
-		for _, grp := range groups {
-			gss := grp.slice()
-			if len(gss) == 1 {
-				continue
-			}
-			for i := 0; i < len(gss); i++ {
-				for j := i + 1; j < len(gss); j++ {
-					s0 := gss[i]
-					s1 := gss[j]
-					isSameGroup := true
+	transTable := dfa.transTable()
+
+	ngrp := len(grps)
+	splitted := true
+	for splitted {
+		splitted = false
+		newuf := newStateGrouping(numst)
+
+		for _, group := range grps {
+			for i, s0 := range group {
+				for _, s1 := range group[i+1:] {
+					same := true
 					for _, ru := range SupportedChars {
-						ns0, _ := dfa.delta.step(s0, ru)
-						ns1, _ := dfa.delta.step(s1, ru)
-						// If ns0 and ns1 belong to different groups, s0 and s1 belong to other groups.
-						// Then current group is split.
-						if !oldStUF.same(ns0, ns1) {
-							isSameGroup = false
+						ns0 := transTable[s0][ru]
+						ns1 := transTable[s1][ru]
+
+						if !uf.Same(ns0, ns1) {
+							same = false
 							break
 						}
 					}
-					if isSameGroup {
-						newStUF.unite(s0, s1)
+					if same {
+						newuf.Unite(s0, s1)
 					}
 				}
 			}
 		}
 
-		newStateSets := make(map[State]*collection.Set[State])
-		for _, st := range states {
-			leaderSt := newStUF.find(st)
-			if _, ok := newStateSets[leaderSt]; ok {
-				newStateSets[leaderSt].Insert(st)
-			} else {
-				newStateSets[leaderSt] = collection.NewSet[State]().Insert(st)
-			}
+		mp := make(map[StateID][]StateID)
+		for stID := StateID(0); stID < StateID(numst); stID++ {
+			mp[newuf.Find(stID)] = append(mp[newuf.Find(stID)], stID)
 		}
-		newGroups := make([]*stateGroup, 0)
-		for _, group := range newStateSets {
-			newGroups = append(newGroups, NewGroup(group))
+		newGrps := make([][]StateID, 0, len(mp))
+		for _, v := range mp {
+			newGrps = append(newGrps, v)
 		}
 
-		// If group splitting occurs, the number of groups is increasing.
-		if ngrp != len(newGroups) {
-			ngrp = len(newGroups)
-			isSplit = true
-			groups = newGroups
-		}
+		uf = newuf
+		splitted = ngrp != len(newGrps)
+		ngrp = len(newGrps)
+		grps = newGrps
 	}
 
-	return groups
+	stGrps := make([]*stateGroup, 0, len(grps))
+	for _, grp := range grps {
+		sets := collection.NewSet[State]()
+		for _, stID := range grp {
+			sets.Insert(stIDToState[stID])
+		}
+		stGrps = append(stGrps, NewGroup(sets))
+	}
+
+	return stGrps
 }
 
 func (dfa DFA) LexerMinimize() DFA {
 	dfa = dfa.Totalize()
 	groups := dfa.grouping()
-	states := dfa.q.Slice()
+	stIDToState := make(map[StateID]State)
+	sts := dfa.q.Slice()
+	for _, st := range sts {
+		stIDToState[st.GetID()] = st
+	}
 
-	uf := newStateUnionFind(states)
+	uf := newStateGrouping(dfa.q.Size())
 	for _, g := range groups {
 		n := g.size()
 		if n == 1 {
 			continue
 		}
-		states := g.slice()
+		sts := g.slice()
 		for i := 1; i < n; i++ {
-			uf.unite(states[0], states[i])
+			uf.Unite(sts[0].GetID(), sts[i].GetID())
 		}
 	}
 
 	q := collection.NewSet[State]()
-	qiter := dfa.q.Iterator()
-	for qiter.HasNext() {
-		st := qiter.Next()
-		q.Insert(uf.find(st))
+	for _, st := range sts {
+		q.Insert(stIDToState[uf.Find(st.GetID())])
 	}
 
-	initState := uf.find(dfa.initState)
+	initState := stIDToState[uf.Find(dfa.initState.GetID())]
 
 	delta := NewDFATransition()
 	iter := dfa.delta.Iterator()
 	for iter.HasNext() {
 		pair, ns := iter.Next()
-		from := uf.find(pair.First)
+		from := stIDToState[uf.Find(pair.First.GetID())]
 		ru := pair.Second
-		ns = uf.find(ns)
+		ns = stIDToState[uf.Find(ns.GetID())]
 		delta.Set(from, ru, ns)
 	}
 
@@ -363,7 +370,7 @@ func (dfa DFA) LexerMinimize() DFA {
 	fiter := dfa.finStates.Iterator()
 	for fiter.HasNext() {
 		st := fiter.Next()
-		finStates.Insert(uf.find(st))
+		finStates.Insert(stIDToState[uf.Find(st.GetID())])
 	}
 
 	return NewDFA(q, delta, initState, finStates)

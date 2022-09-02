@@ -12,8 +12,6 @@ const nonFinStateRegexID RegexID = stdmath.MaxInt
 
 const SupportedChars = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ \t\n\r"
 
-// const SupportedChars = "abcdefghijklmnopqrstuvwxyz+-*/.0123456789"
-
 // const SupportedChars = "abc"
 
 type RegexID int
@@ -208,41 +206,25 @@ func (iter *stateSetDictIterator[T]) Next() (*StateSet, T) {
 }
 
 type stateUnionFind struct {
-	stToID map[State]int
-	idToSt map[int]State
-	uf     *collection.UnionFind
+	uf *collection.UnionFind
 }
 
-func newStateUnionFind(states []State) *stateUnionFind {
-	stToID := make(map[State]int)
-	idToSt := make(map[int]State)
-	id := 0
-	for _, st := range states {
-		stToID[st] = id
-		idToSt[id] = st
-		id++
-	}
-
+func newStateGrouping(n int) *stateUnionFind {
 	return &stateUnionFind{
-		stToID: stToID,
-		idToSt: idToSt,
-		uf:     collection.NewUnionFind(len(states)),
+		uf: collection.NewUnionFind(n),
 	}
 }
 
-func (uf *stateUnionFind) unite(x, y State) bool {
-	xid := uf.stToID[x]
-	yid := uf.stToID[y]
-	return uf.uf.Unite(xid, yid)
+func (uf *stateUnionFind) Unite(x, y StateID) bool {
+	return uf.uf.Unite(int(x), int(y))
 }
 
-func (uf *stateUnionFind) find(x State) State {
-	id := uf.stToID[x]
-	return uf.idToSt[uf.uf.Find(id)]
+func (uf *stateUnionFind) Find(x StateID) StateID {
+	return StateID(uf.uf.Find(int(x)))
 }
 
-func (uf *stateUnionFind) same(x, y State) bool {
-	return uf.find(x) == uf.find(y)
+func (uf *stateUnionFind) Same(x, y StateID) bool {
+	return uf.Find(x) == uf.Find(y)
 }
 
 func charLabel(s string) string {

@@ -177,7 +177,6 @@ func TestDFA_Accept(t *testing.T) {
 func TestDot(t *testing.T) {
 	// // generate dot file
 	s, _ := lexerNFA([]string{"a", "abb", "a*bb*"}).ToImNFA().ToDFA().LexerMinimize().RemoveBH().ToDot()
-	// s, _ := lexerNFA([]string{"a", "abb", "a*bb*"}).ToImNFA().ToDot()
 	// s, _ := lexerNFA([]string{
 	// 	"if|for|while|func|return",
 	// 	"[a-zA-Z][a-zA-Z0-9]*",
