@@ -1,7 +1,7 @@
-# golex: Toy implementation of Lexer Generator
+# golex: Toy implementation of Lexical analyzer generator
 
-golex is lexical analyzer generator such as lex.
-This is toy implementation for study, so don't use for production.
+golex is lexical analyzer generator such as Lex.
+This is toy implementation for my study, so don't use for production.
 golex supports only ASCII string, doesn't do unicode.
 
 
@@ -18,12 +18,71 @@ Usage of ./golex:
         input lexer configuration file
 
 # golex [-src srcfile] [-pkg output_pkg_name] [-o outfile]
-$ golex -src sample.l -pkg main -o lexer.go
+$ golex -src sample.l -pkg main -o main.go
+$ go run main.go
 
-$ go run lexer.go
-3 ab
-2 abb
-1 a
-2022/08/28 22:49:32 EOF
-exit status 1
+func foo123bar() int {
+    x := 1 * 10 + 123 - 1000 / 5432
+    y := float64(x)
+
+    return x + y
+}
+
+-----------------
+Keyword
+	 "func"
+Identifier
+	 "foo123bar"
+LParen
+	 "("
+RParen
+	 ")"
+Type
+	 "int"
+LBracket
+	 "{"
+Identifier
+	 "x"
+Operator
+	 ":="
+Digit
+	 "1"
+Operator
+	 "*"
+Digit
+	 "10"
+Operator
+	 "+"
+Digit
+	 "123"
+Operator
+	 "-"
+Digit
+	 "1000"
+Operator
+	 "/"
+Digit
+	 "5432"
+Identifier
+	 "y"
+Operator
+	 ":="
+Type
+	 "float64"
+LParen
+	 "("
+Identifier
+	 "x"
+RParen
+	 ")"
+Keyword
+	 "return"
+Identifier
+	 "x"
+Operator
+	 "+"
+Identifier
+	 "y"
+RBracket
+	 "}"
 ```
