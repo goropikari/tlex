@@ -1,4 +1,6 @@
-![](image/logo.png)
+<div align="center">
+    <img height=200 src="image/logo.png" alt="tlex logo">
+</div>
 
 # tlex: Toy LEXical analyzer generator
 
