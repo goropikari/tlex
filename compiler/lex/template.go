@@ -106,9 +106,6 @@ yystart:
 			yylex.finPos = yyNewCurrPos
 			yylex.currPos = yyNewCurrPos
 			yylex.currStateID = 1
-			if _, err := yylex.rs.Seek(int64(yylex.currPos), io.SeekStart); err != nil {
-				return 0, err
-			}
 
 			regexID := yylex.finRegexID
 			yylex.finRegexID = 0
