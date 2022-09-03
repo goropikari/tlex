@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"log"
 	"testing"
 )
 
@@ -27,7 +26,7 @@ func foo000() int {
 		{Identifier, "foo000"},
 		{LParen, "("},
 		{RParen, ")"},
-		{Identifier, "int"},
+		{Type, "int"},
 		{LBracket, "{"},
 		{Identifier, "x"},
 		{Operator, ":="},
@@ -57,19 +56,19 @@ func foo000() int {
 	}
 
 	if len(expected) != len(ns) {
-		log.Fatal(errors.New("type is different"))
+		t.Error("type is different")
 	}
 	for i, v := range expected {
 		if v.typ != ns[i] {
-			log.Fatal(errors.New("type is different"))
+			t.Error("type is different")
 		}
 	}
 	if len(expected) != len(strs) {
-		log.Fatal(errors.New("token is different"))
+		t.Error("token is different")
 	}
 	for i, v := range expected {
 		if v.text != strs[i] {
-			log.Fatal(errors.New("token is different"))
+			t.Error("token is different")
 		}
 	}
 }

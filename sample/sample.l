@@ -1,12 +1,14 @@
 %{
+
 import (
     "fmt"
     "log"
 )
 
-type Type = int
+// generated lexer returned types are (int, error).
 const (
-    Keyword Type = iota + 1
+    Keyword int = iota + 1
+    Type
     Identifier
     Digit
     Whitespace
@@ -21,6 +23,7 @@ const (
 
 %%
 "if|for|while|func|return" { return Keyword, nil }
+"int|float64" { return Type, nil }
 "[a-zA-Z][a-zA-Z0-9]*" { return Identifier, nil }
 "[1-9][0-9]*" { return Digit, nil }
 "[ \t\n\r]*" { }
@@ -32,12 +35,14 @@ const (
 "." {}
 %%
 
+// This part is optional
 func main() {
     program := `
-func foo000() int {
+func foo123bar() int {
     x := 1 * 10 + 123 - 1000 / 5432
+    y := float64(x)
 
-    return x
+    return x + y
 }
 `
     fmt.Println(program)
@@ -47,12 +52,13 @@ func foo000() int {
     for {
         n, err := lex.Next()
         if err != nil {
-            log.Fatal(err)
             return
         }
         switch n {
         case Keyword:
             fmt.Println("Keyword")
+        case Type:
+            fmt.Println("Type")
         case Identifier:
             fmt.Println("Identifier")
         case Digit:
