@@ -88,8 +88,8 @@ func (p *Parser) sum() (RegexExpr, error) {
 
 func (p *Parser) set() (RegexExpr, error) {
 	neg := false
-	runes := make([]rune, 0)
-	var prev rune
+	bs := make([]byte, 0)
+	var prev byte
 
 	for {
 		tok, err := p.peek()
@@ -103,51 +103,51 @@ func (p *Parser) set() (RegexExpr, error) {
 			}
 			goto Out
 		case NegationTokenType:
-			prev = tok.GetRune()
+			prev = tok.GetByte()
 			neg = true
 		case MinusTokenType:
-			prev = tok.GetRune()
+			prev = tok.GetByte()
 		default:
-			ru := tok.GetRune()
+			b := tok.GetByte()
 			if prev == '-' {
-				from := runes[len(runes)-1]
-				if from > ru {
+				from := bs[len(bs)-1]
+				if from > b {
 					return nil, ErrParse
 				}
-				for t := from + 1; t < ru; t++ {
-					runes = append(runes, t)
+				for t := from + 1; t < b; t++ {
+					bs = append(bs, t)
 				}
 			}
-			runes = append(runes, ru)
-			prev = ru
+			bs = append(bs, b)
+			prev = b
 		}
 		_, _ = p.read()
 	}
 Out:
 	var expr RegexExpr
 	if !neg {
-		expr = NewSymbolExpr(runes[0])
-		if len(runes) == 1 {
+		expr = NewSymbolExpr(bs[0])
+		if len(bs) == 1 {
 			return expr, nil
 		}
 
-		for i := 1; i < len(runes); i++ {
-			rhs := NewSymbolExpr(runes[i])
+		for i := 1; i < len(bs); i++ {
+			rhs := NewSymbolExpr(bs[i])
 			expr = NewSumExpr(expr, rhs)
 		}
 		return expr, nil
 	}
 
-	ruSet := collection.NewSet[rune]()
-	for _, ru := range runes {
-		ruSet.Insert(ru)
+	ruSet := collection.NewSet[byte]()
+	for _, b := range bs {
+		ruSet.Insert(b)
 	}
-	for _, ru := range automata.SupportedChars {
-		if !ruSet.Contains(ru) {
+	for _, b := range automata.SupportedChars {
+		if !ruSet.Contains(b) {
 			if expr == nil {
-				expr = NewSymbolExpr(ru)
+				expr = NewSymbolExpr(b)
 			} else {
-				expr = NewSumExpr(expr, NewSymbolExpr(ru))
+				expr = NewSumExpr(expr, NewSymbolExpr(b))
 			}
 		}
 	}
@@ -208,7 +208,7 @@ func (p *Parser) primary() (RegexExpr, error) {
 
 	switch s.GetType() {
 	case SymbolTokenType:
-		return NewSymbolExpr(s.GetRune()), nil
+		return NewSymbolExpr(s.GetByte()), nil
 	case DotTokenType:
 		return NewDotExpr(), nil
 	case LParenTokenType:
@@ -279,10 +279,10 @@ func (expr StarExpr) Accept(v NodeVisitor) {
 }
 
 type SymbolExpr struct {
-	sym rune
+	sym byte
 }
 
-func NewSymbolExpr(sym rune) SymbolExpr {
+func NewSymbolExpr(sym byte) SymbolExpr {
 	return SymbolExpr{sym: sym}
 }
 

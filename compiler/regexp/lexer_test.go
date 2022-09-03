@@ -15,7 +15,7 @@ func TestLexer_Scan(t *testing.T) {
 	}{
 		{
 			name:  "lexer test",
-			regex: "a(b|c*)deあいう\t\n[a-z][^A-Z]\\+\\-\\*/",
+			regex: "a(b|c*)de\t\n[a-z][^A-Z]\\+\\-\\*/",
 			expected: []regexp.Token{
 				regexp.NewToken(regexp.SymbolTokenType, 'a'),
 				regexp.NewToken(regexp.LParenTokenType, '('),
@@ -26,9 +26,6 @@ func TestLexer_Scan(t *testing.T) {
 				regexp.NewToken(regexp.RParenTokenType, ')'),
 				regexp.NewToken(regexp.SymbolTokenType, 'd'),
 				regexp.NewToken(regexp.SymbolTokenType, 'e'),
-				regexp.NewToken(regexp.SymbolTokenType, 'あ'),
-				regexp.NewToken(regexp.SymbolTokenType, 'い'),
-				regexp.NewToken(regexp.SymbolTokenType, 'う'),
 				regexp.NewToken(regexp.SymbolTokenType, '\t'),
 				regexp.NewToken(regexp.SymbolTokenType, '\n'),
 				regexp.NewToken(regexp.LSqBracketTokenType, '['),

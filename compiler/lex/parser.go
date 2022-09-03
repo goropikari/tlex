@@ -48,25 +48,25 @@ func (p *Parser) parseRules(ruleStr string) [][]string {
 	return rules
 }
 
-func (p *Parser) readRule(r io.RuneReader) string {
-	var prev rune
+func (p *Parser) readRule(r io.ByteReader) string {
+	var prev byte
 	for {
-		ru, _, err := r.ReadRune()
+		b, err := r.ReadByte()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return ""
 			}
 			panic(err)
 		}
-		if prev == '\n' && ru == '"' {
+		if prev == '\n' && b == '"' {
 			break
 		}
-		prev = ru
+		prev = b
 	}
 
-	runes := make([]rune, 0)
+	bs := make([]byte, 0)
 	for {
-		ru, _, err := r.ReadRune()
+		b, err := r.ReadByte()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
@@ -74,74 +74,74 @@ func (p *Parser) readRule(r io.RuneReader) string {
 			panic(err)
 		}
 
-		switch ru {
+		switch b {
 		case '\\':
 			if prev == '\\' {
-				runes = append(runes, ru)
+				bs = append(bs, b)
 				prev = 0
 				continue
 			}
-			prev = ru
+			prev = b
 			continue
 		case 'n':
 			if prev == '\\' {
-				runes = append(runes, '\n')
+				bs = append(bs, '\n')
 				prev = 0
 				continue
 			}
 		case 'r':
 			if prev == '\\' {
-				runes = append(runes, '\r')
+				bs = append(bs, '\r')
 				prev = 0
 				continue
 			}
 		case 't':
 			if prev == '\\' {
-				runes = append(runes, '\t')
+				bs = append(bs, '\t')
 				prev = 0
 				continue
 			}
 		case '"':
 			if prev == '\\' {
-				prev = ru
-				runes = append(runes, ru)
+				prev = b
+				bs = append(bs, b)
 				continue
 			}
 
-			return string(runes)
+			return string(bs)
 		}
-		prev = ru
-		runes = append(runes, ru)
+		prev = b
+		bs = append(bs, b)
 	}
 	return ""
 }
 
-func (p *Parser) readBlock(r io.RuneReader) string {
+func (p *Parser) readBlock(r io.ByteReader) string {
 	for {
-		ru, _, err := r.ReadRune()
+		b, err := r.ReadByte()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return ""
 			}
 			panic(err)
 		}
-		if ru == '{' {
+		if b == '{' {
 			break
 		}
 	}
 
 	nparen := 1
-	runes := []rune{'{'}
+	bs := []byte{'{'}
 	for {
-		ru, _, err := r.ReadRune()
+		b, err := r.ReadByte()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
 			panic(err)
 		}
-		runes = append(runes, ru)
-		switch ru {
+		bs = append(bs, b)
+		switch b {
 		case '{':
 			// コメント, 文字列中に { が使われていたときはインクリメントしない処理が本来は必要
 			nparen++
@@ -149,7 +149,7 @@ func (p *Parser) readBlock(r io.RuneReader) string {
 			// コメント, 文字列中に { が使われていたときはデクリメントしない処理が本来は必要
 			nparen--
 			if nparen == 0 {
-				return string(runes)
+				return string(bs)
 			}
 		}
 	}

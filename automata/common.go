@@ -7,10 +7,20 @@ import (
 	"github.com/goropikari/tlex/collection"
 )
 
-const epsilon = 'ε'
+const asciiSize = 1 << 7
+
+const epsilon = byte(0)
 const nonFinStateRegexID RegexID = stdmath.MaxInt
 
-const SupportedChars = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ \t\n\r"
+var SupportedChars = []byte{}
+
+func init() {
+	for i := 1; i < asciiSize; i++ {
+		SupportedChars = append(SupportedChars, byte(i))
+	}
+}
+
+// var SupportedChars = []byte("!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ \t\n\r")
 
 // const SupportedChars = "abc"
 

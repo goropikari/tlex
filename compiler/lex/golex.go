@@ -113,25 +113,25 @@ func genFinStates(idToSt []automata.State, finStates *collection.Set[automata.St
 }
 
 func genTransitionTable(stToID map[automata.State]int, idToSt []automata.State, delta *automata.DFATransition) string {
-	tbl := make(map[int]map[rune]int)
+	tbl := make(map[int]map[byte]int)
 	var buf bytes.Buffer
 	iter := delta.Iterator()
 	for iter.HasNext() {
 		pair, to := iter.Next()
 		from := pair.First
-		ru := pair.Second
+		b := pair.Second
 		if _, ok := tbl[stToID[from]]; !ok {
-			tbl[stToID[from]] = make(map[rune]int)
+			tbl[stToID[from]] = make(map[byte]int)
 		}
-		tbl[stToID[from]][ru] = stToID[to]
+		tbl[stToID[from]][b] = stToID[to]
 	}
 
 	for fromID := 1; fromID <= len(stToID); fromID++ {
 		if _, ok := tbl[fromID]; ok {
 			buf.WriteString(fmt.Sprintf("%v: {\n", fromID))
-			for _, ru := range automata.SupportedChars {
-				if toID, ok2 := tbl[fromID][ru]; ok2 {
-					buf.WriteString(fmt.Sprintf("%v: %v,\n", ru, toID))
+			for _, b := range automata.SupportedChars {
+				if toID, ok2 := tbl[fromID][b]; ok2 {
+					buf.WriteString(fmt.Sprintf("%v: %v,\n", b, toID))
 				}
 			}
 			buf.WriteString("},\n")

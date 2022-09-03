@@ -35,8 +35,12 @@ var yyFinStates = map[yyStateID]struct{}{
 	4: {},
 }
 
-var yyTransitionTable = map[yyStateID]map[rune]yyStateID{
+var yyTransitionTable = map[yyStateID]map[byte]yyStateID{
 	1: {
+		9:   3,
+		10:  4,
+		13:  3,
+		32:  3,
 		40:  2,
 		41:  2,
 		48:  2,
@@ -101,10 +105,6 @@ var yyTransitionTable = map[yyStateID]map[rune]yyStateID{
 		120: 2,
 		121: 2,
 		122: 2,
-		32:  3,
-		9:   3,
-		10:  4,
-		13:  3,
 	},
 	2: {
 		40:  2,
@@ -173,22 +173,22 @@ var yyTransitionTable = map[yyStateID]map[rune]yyStateID{
 		122: 2,
 	},
 	3: {
-		32: 3,
 		9:  3,
 		13: 3,
+		32: 3,
 	},
 }
 
-func yyNextStep(id yyStateID, ru rune) yyStateID {
+func yyNextStep(id yyStateID, b byte) yyStateID {
 	if mp, ok := yyTransitionTable[id]; ok {
-		return mp[ru]
+		return mp[b]
 	}
 
 	return 0
 }
 
 type yyLexer struct {
-	data        []rune
+	data        []byte
 	length      int
 	beginPos    int
 	finPos      int
@@ -199,10 +199,10 @@ type yyLexer struct {
 }
 
 func New(data string) *yyLexer {
-	runes := []rune(data)
+	bs := []byte(data)
 	return &yyLexer{
-		data:        runes,
-		length:      len(runes),
+		data:        bs,
+		length:      len(bs),
 		beginPos:    0,
 		finPos:      0,
 		currPos:     0,
@@ -211,7 +211,7 @@ func New(data string) *yyLexer {
 	}
 }
 
-func (yylex *yyLexer) currRune() rune {
+func (yylex *yyLexer) currByte() byte {
 	if yylex.currPos >= yylex.length {
 		return 0
 	}
@@ -225,7 +225,7 @@ yystart:
 		return 0, EOF
 	}
 	for yylex.currPos <= yylex.length {
-		yyNxStID := yyNextStep(yylex.currStateID, yylex.currRune())
+		yyNxStID := yyNextStep(yylex.currStateID, yylex.currByte())
 		if yyNxStID == 0 {
 			yylex.YYText = string(yylex.data[yylex.beginPos : yylex.finPos+1])
 			YYText = yylex.YYText

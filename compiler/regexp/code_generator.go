@@ -61,11 +61,11 @@ func (gen *CodeGenerator) VisitDotExpr(expr DotExpr) {
 	states := collection.NewSet[automata.State]().Insert(from)
 	finStates := collection.NewSet[automata.State]()
 
-	for _, ru := range automata.SupportedChars {
+	for _, b := range automata.SupportedChars {
 		to := automata.NewState(automata.StateID(guid.New()))
 		states = states.Insert(to)
 		finStates = finStates.Insert(to)
-		trans[collection.NewPair(from, ru)] = collection.NewSet[automata.State]().Insert(to)
+		trans[collection.NewPair(from, b)] = collection.NewSet[automata.State]().Insert(to)
 	}
 
 	gen.nfa = automata.NewNFA(

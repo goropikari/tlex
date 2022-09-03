@@ -52,7 +52,10 @@ func foo123bar() int {
     for {
         n, err := lex.Next()
         if err != nil {
-            return
+            if err == EOF {
+                return
+            }
+            panic(err)
         }
         switch n {
         case Keyword:

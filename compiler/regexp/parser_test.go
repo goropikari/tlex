@@ -15,7 +15,7 @@ func TestParser_Parse(t *testing.T) {
 	}{
 		{
 			name: "parser test",
-			tokens: []regexp.Token{ // a(b|c*)deあいう|fg*hi|.*
+			tokens: []regexp.Token{ // a(b|c*)de|fg*hi|.*
 				regexp.NewToken(regexp.SymbolTokenType, 'a'),
 				regexp.NewToken(regexp.LParenTokenType, '('),
 				regexp.NewToken(regexp.SymbolTokenType, 'b'),
@@ -25,9 +25,6 @@ func TestParser_Parse(t *testing.T) {
 				regexp.NewToken(regexp.RParenTokenType, ')'),
 				regexp.NewToken(regexp.SymbolTokenType, 'd'),
 				regexp.NewToken(regexp.SymbolTokenType, 'e'),
-				regexp.NewToken(regexp.SymbolTokenType, 'あ'),
-				regexp.NewToken(regexp.SymbolTokenType, 'い'),
-				regexp.NewToken(regexp.SymbolTokenType, 'う'),
 				regexp.NewToken(regexp.BarTokenType, '|'),
 				regexp.NewToken(regexp.SymbolTokenType, 'f'),
 				regexp.NewToken(regexp.SymbolTokenType, 'g'),
@@ -53,17 +50,8 @@ SumExpr
 			ConcatExpr
 				SymbolExpr
 					d
-				ConcatExpr
-					SymbolExpr
-						e
-					ConcatExpr
-						SymbolExpr
-							あ
-						ConcatExpr
-							SymbolExpr
-								い
-							SymbolExpr
-								う
+				SymbolExpr
+					e
 	SumExpr
 		ConcatExpr
 			SymbolExpr
@@ -107,7 +95,7 @@ func TestParser_Lexer_Parse(t *testing.T) {
 	}{
 		{
 			name:  "lexer & parser test",
-			given: "a(b|c*)deあいう|fg*hi|.*",
+			given: "a(b|c*)de|fg*hi|.*",
 			expected: `
 SumExpr
 	ConcatExpr
@@ -123,17 +111,8 @@ SumExpr
 			ConcatExpr
 				SymbolExpr
 					d
-				ConcatExpr
-					SymbolExpr
-						e
-					ConcatExpr
-						SymbolExpr
-							あ
-						ConcatExpr
-							SymbolExpr
-								い
-							SymbolExpr
-								う
+				SymbolExpr
+					e
 	SumExpr
 		ConcatExpr
 			SymbolExpr

@@ -26,10 +26,10 @@ const (
 
 type Token struct {
 	typ TokenType
-	val rune
+	val byte
 }
 
-func NewToken(typ TokenType, val rune) Token {
+func NewToken(typ TokenType, val byte) Token {
 	return Token{typ: typ, val: val}
 }
 
@@ -37,43 +37,43 @@ func (tok Token) GetType() TokenType {
 	return tok.typ
 }
 
-func (tok Token) GetRune() rune {
+func (tok Token) GetByte() byte {
 	return tok.val
 }
 
 type Lexer struct {
-	regexp []rune
+	regexp []byte
 	tokens []Token
 	pos    int
 	length int
 }
 
 func NewLexer(regexp string) *Lexer {
-	return &Lexer{regexp: []rune(regexp), pos: 0, length: len(regexp)}
+	return &Lexer{regexp: []byte(regexp), pos: 0, length: len(regexp)}
 }
 
-func (lex *Lexer) peek() (rune, error) {
+func (lex *Lexer) peek() (byte, error) {
 	if lex.pos >= len(lex.regexp) {
 		return 0, io.EOF
 	}
 	return lex.regexp[lex.pos], nil
 }
 
-// func (lex *Lexer) next() (rune, error) {
+// func (lex *Lexer) next() (byte, error) {
 // 	if lex.pos+1 >= lex.length {
 // 		return 0, io.EOF
 // 	}
 // 	return lex.regexp[lex.pos+1], nil
 // }
 
-func (lex *Lexer) read() (rune, error) {
-	ru, err := lex.peek()
+func (lex *Lexer) read() (byte, error) {
+	b, err := lex.peek()
 	if err != nil {
 		return 0, err
 	}
 	lex.advance()
 
-	return ru, nil
+	return b, nil
 }
 
 func (lex *Lexer) advance() {
@@ -82,21 +82,21 @@ func (lex *Lexer) advance() {
 
 func (lex *Lexer) Scan() []Token {
 	for {
-		ru, err := lex.read()
+		b, err := lex.read()
 		if errors.Is(err, io.EOF) {
 			return lex.tokens
 		}
 
 		var typ TokenType
-		switch ru {
+		switch b {
 		case '\\':
-			ru2, err := lex.read()
+			b2, err := lex.read()
 			if errors.Is(err, io.EOF) {
 				panic(ErrInvalidRegex)
 			}
-			switch ru2 {
+			switch b2 {
 			case '.', '+', '-', '*', '(', ')', '[', ']':
-				ru = ru2
+				b = b2
 			default:
 				panic(ErrInvalidRegex)
 			}
@@ -110,13 +110,13 @@ func (lex *Lexer) Scan() []Token {
 		case ')':
 			typ = RParenTokenType
 		case '[':
-			lex.tokens = append(lex.tokens, NewToken(LSqBracketTokenType, ru))
-			ru2, err := lex.read()
+			lex.tokens = append(lex.tokens, NewToken(LSqBracketTokenType, b))
+			b2, err := lex.read()
 			if errors.Is(err, io.EOF) {
 				panic(ErrInvalidRegex)
 			}
-			ru = ru2
-			switch ru {
+			b = b2
+			switch b {
 			case '^':
 				typ = NegationTokenType
 			default:
@@ -131,6 +131,6 @@ func (lex *Lexer) Scan() []Token {
 		default:
 			typ = SymbolTokenType
 		}
-		lex.tokens = append(lex.tokens, NewToken(typ, ru))
+		lex.tokens = append(lex.tokens, NewToken(typ, b))
 	}
 }

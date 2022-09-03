@@ -8,10 +8,10 @@ import (
 	"github.com/goropikari/tlex/utils/counter"
 )
 
-type ImdNFATransition map[collection.Pair[StateID, rune]]*StateSet
+type ImdNFATransition map[collection.Pair[StateID, byte]]*StateSet
 
-func (trans ImdNFATransition) step(x StateID, ru rune) (*StateSet, bool) {
-	nxs, ok := trans[collection.NewPair(x, ru)]
+func (trans ImdNFATransition) step(x StateID, b byte) (*StateSet, bool) {
+	nxs, ok := trans[collection.NewPair(x, b)]
 	return nxs, ok
 }
 
@@ -85,10 +85,10 @@ func (nfa ImdNFA) ToDFA() DFA {
 	dfaDelta := NewDFATransition()
 	for diter.HasNext() {
 		fromSs, mp := diter.Next()
-		for ru, toSs := range mp {
+		for b, toSs := range mp {
 			fromSt, _ := ssToSt.Get(fromSs)
 			toSt, _ := ssToSt.Get(toSs)
-			dfaDelta.Set(fromSt, ru, toSt)
+			dfaDelta.Set(fromSt, b, toSt)
 		}
 	}
 
@@ -105,7 +105,7 @@ func (nfa ImdNFA) ToDFA() DFA {
 	return NewDFA(dfaStates, dfaDelta, dfaInitState, dfaFinStates)
 }
 
-func (nfa ImdNFA) subsetConstruction() (states *StateSetDict[StateID], delta *StateSetDict[map[rune]*StateSet], initState *StateSet, finStates *StateSetDict[Nothing]) {
+func (nfa ImdNFA) subsetConstruction() (states *StateSetDict[StateID], delta *StateSetDict[map[byte]*StateSet], initState *StateSet, finStates *StateSetDict[Nothing]) {
 	ecl := nfa.buildEClosures()
 
 	initState = nfa.initStates.Copy()
@@ -122,7 +122,7 @@ func (nfa ImdNFA) subsetConstruction() (states *StateSetDict[StateID], delta *St
 	}
 	visited.Set(initState, nfa.genStateID())
 
-	delta = NewStateSetDict[map[rune]*StateSet]()
+	delta = NewStateSetDict[map[byte]*StateSet]()
 
 	que := list.New() // list of *StateSet
 	que.PushBack(initState)
@@ -131,12 +131,12 @@ func (nfa ImdNFA) subsetConstruction() (states *StateSetDict[StateID], delta *St
 		que.Remove(top)
 		from := top.Value.(*StateSet)
 
-		for _, ru := range SupportedChars {
+		for _, b := range SupportedChars {
 			tos := NewStateSet(nfa.numst())
 			fromIter := from.iterator()
 			for fromIter.HasNext() {
 				fromStID := fromIter.Next()
-				if nxs, ok := nfa.delta.step(fromStID, ru); ok {
+				if nxs, ok := nfa.delta.step(fromStID, b); ok {
 					nxsIter := nxs.iterator()
 					for nxsIter.HasNext() {
 						nxStID := nxsIter.Next()
@@ -152,11 +152,11 @@ func (nfa ImdNFA) subsetConstruction() (states *StateSetDict[StateID], delta *St
 				finStates.Set(tos, nothing)
 			}
 			if v, ok := delta.Get(from); ok {
-				v[ru] = tos
+				v[b] = tos
 				delta.Set(from, v)
 			} else {
-				mp := map[rune]*StateSet{}
-				mp[ru] = tos
+				mp := map[byte]*StateSet{}
+				mp[b] = tos
 				delta.Set(from, mp)
 			}
 			if visited.Contains(tos) {

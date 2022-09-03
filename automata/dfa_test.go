@@ -157,6 +157,13 @@ func TestDFA_Accept(t *testing.T) {
 			accept:  false,
 			regexID: 0,
 		},
+		{
+			name:    "arbitrary character",
+			regexs:  []string{".*"},
+			given:   "abc",
+			accept:  true,
+			regexID: 1,
+		},
 	}
 
 	for _, tt := range tests {
@@ -176,7 +183,12 @@ func TestDFA_Accept(t *testing.T) {
 
 func TestDot(t *testing.T) {
 	// // generate dot file
-	s, _ := lexerNFA([]string{"a", "abb", "a*bb*"}).ToImNFA().ToDFA().LexerMinimize().RemoveBH().ToDot()
+	s, _ := lexerNFA([]string{"a", "abb", "a*bb*"}).
+		ToImNFA().
+		ToDFA().
+		LexerMinimize().
+		RemoveBH().
+		ToDot()
 	// s, _ := lexerNFA([]string{
 	// 	"if|for|while|func|return",
 	// 	"[a-zA-Z][a-zA-Z0-9]*",
@@ -189,6 +201,12 @@ func TestDot(t *testing.T) {
 	// 	"\\+|\\-|\\*|/|:=|==|!=",
 	// 	".",
 	// }).ToImNFA().ToDFA().LexerMinimize().RemoveBH().ToDot()
+	// s, _ := lexerNFA([]string{".*"}).
+	// 	ToImNFA().
+	// 	ToDFA().
+	// 	LexerMinimize().
+	// 	RemoveBH().
+	// 	ToDot()
 	err := os.WriteFile("ex.dot", []byte(s), 0666)
 	if err != nil {
 		log.Fatal(err)

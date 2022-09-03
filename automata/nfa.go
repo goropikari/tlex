@@ -5,7 +5,7 @@ import (
 	"github.com/goropikari/tlex/utils/guid"
 )
 
-type NFATransition map[collection.Pair[State, rune]]*collection.Set[State]
+type NFATransition map[collection.Pair[State, byte]]*collection.Set[State]
 
 func (t NFATransition) Copy() NFATransition {
 	delta := make(NFATransition)
@@ -17,8 +17,7 @@ func (t NFATransition) Copy() NFATransition {
 }
 
 type NFA struct {
-	q *collection.Set[State]
-	// sigma      collection.Set[rune]
+	q          *collection.Set[State]
 	delta      NFATransition
 	initStates *collection.Set[State]
 	finStates  *collection.Set[State]
@@ -27,7 +26,6 @@ type NFA struct {
 
 func NewNFA(
 	q *collection.Set[State],
-	// sigma collection.Set[rune],
 	delta NFATransition,
 	initStates *collection.Set[State],
 	finStates *collection.Set[State]) NFA {
@@ -143,8 +141,8 @@ func (nfa NFA) ToImNFA() ImdNFA {
 	delta := make(ImdNFATransition)
 	for pair, tos := range nfa.delta {
 		from := pair.First
-		ru := pair.Second
-		delta[collection.NewPair(from.GetID(), ru)] = buildStateSet(n, tos)
+		b := pair.Second
+		delta[collection.NewPair(from.GetID(), b)] = buildStateSet(n, tos)
 	}
 	initStates := buildStateSet(n, nfa.initStates)
 	finStates := buildStateSet(n, nfa.finStates)
@@ -170,7 +168,7 @@ func (nfa NFA) relabelStateIDs() NFA {
 	newdelta := make(NFATransition)
 	for pair, tos := range nfa.delta {
 		oldfrom := pair.First
-		ru := pair.Second
+		b := pair.Second
 
 		newfrom := NewState(oldToNewID[oldfrom.GetID()])
 		newfrom.SetRegexID(oldfrom.GetRawRegexID())
@@ -182,7 +180,7 @@ func (nfa NFA) relabelStateIDs() NFA {
 			newto.SetRegexID(oldto.GetRawRegexID())
 			newtos.Insert(newto)
 		}
-		newdelta[collection.NewPair(newfrom, ru)] = newtos
+		newdelta[collection.NewPair(newfrom, b)] = newtos
 	}
 
 	newInitStates := collection.NewSet[State]()
@@ -251,7 +249,7 @@ func (nfa *NFA) SetRegexID(id RegexID) {
 		if nfa.finStates.Contains(from) {
 			from.SetRegexID(id)
 		}
-		ru := pair.Second
+		b := pair.Second
 		nss := collection.NewSet[State]()
 		siter := sts.Iterator()
 		for siter.HasNext() {
@@ -261,7 +259,7 @@ func (nfa *NFA) SetRegexID(id RegexID) {
 			}
 			nss.Insert(to)
 		}
-		delta[collection.NewPair(from, ru)] = nss
+		delta[collection.NewPair(from, b)] = nss
 	}
 
 	nfa2 = NewNFA(q, delta, initStates, finStates)

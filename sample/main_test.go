@@ -49,7 +49,7 @@ func foo000() int {
 			if errors.Is(err, EOF) {
 				break
 			}
-			return
+			t.Fatal(err)
 		}
 		ns = append(ns, n)
 		strs = append(strs, lex.YYText)
