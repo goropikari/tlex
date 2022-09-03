@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"errors"
+	"io"
 	"testing"
 )
 
@@ -14,7 +16,7 @@ func foo000() int {
 }
 `
 
-	lex := New(program)
+	lex := New(bytes.NewReader([]byte(program)))
 	ns := make([]int, 0)
 	strs := make([]string, 0)
 
@@ -46,7 +48,7 @@ func foo000() int {
 	for {
 		n, err := lex.Next()
 		if err != nil {
-			if errors.Is(err, EOF) {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			t.Fatal(err)

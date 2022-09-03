@@ -3,6 +3,7 @@
 import (
     "fmt"
     "log"
+    "bytes"
 )
 
 // generated lexer returned types are (int, error).
@@ -48,11 +49,11 @@ func foo123bar() int {
     fmt.Println(program)
     fmt.Println("-----------------")
 
-    lex := New(program)
+    lex := New(bytes.NewReader([]byte(program)))
     for {
         n, err := lex.Next()
         if err != nil {
-            if err == EOF {
+            if err == io.EOF {
                 return
             }
             panic(err)

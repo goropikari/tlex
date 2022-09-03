@@ -1,5 +1,7 @@
 %{
 
+import "bytes"
+
 var nc = 0
 var nw = 0
 var nl = 0
@@ -23,10 +25,10 @@ func main() {
     program := `hello world
 hello tlex
 `
-    fmt.Println(program)
+    fmt.Print(program)
     fmt.Println("-----------------")
 
-    lex := New(program)
+    lex := New(bytes.NewReader([]byte(program)))
     for {
         _, err := lex.Next()
         if err != nil {
