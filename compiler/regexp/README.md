@@ -1,6 +1,8 @@
-This is regular expression compiler. This compiler compiles regex to a deterministic finite automaton.
+This is regular expression compiler. This compiles regex to a deterministic finite automaton.
 
 # Regular Expression Grammer
+`symbol` and charactors enclosed by `'` are terminal.
+
 ```
 Sum     ::= Concat '|' Sum
           | Concat
@@ -12,7 +14,7 @@ Star    ::= Primary '*'
           | Primary
 
 Primary ::= Group
-          | Symbol
+          | symbol
 
 Group   ::= '(' Sum ')'
 ```

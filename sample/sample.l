@@ -76,6 +76,6 @@ func foo123bar() int {
         case Operator:
             fmt.Println("Operator")
         }
-        fmt.Printf("\t %#v\n",YYtext)
+        fmt.Printf("\t %#v\n",lex.YYText)
     }
 }

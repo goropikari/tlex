@@ -164,7 +164,7 @@ func genRegexActions(actions []string) string {
 	for i, v := range actions {
 		buf.WriteString(fmt.Sprintf("case %v:\n", i+1))
 		buf.WriteString(v + "\n")
-		buf.WriteString("goto start\n")
+		buf.WriteString("goto yystart\n")
 	}
 
 	return buf.String()

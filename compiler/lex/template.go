@@ -12,8 +12,8 @@ import (
 
 type yyStateID = int
 type yyRegexID = int
+var YYText string
 
-var YYtext string
 var (
 	ErrYYScan = errors.New("failed to scan")
 	EOF       = errors.New("EOF")
@@ -49,6 +49,7 @@ type yyLexer struct {
 	currPos     int
 	finRegexID  int
 	currStateID yyStateID
+	YYText      string
 }
 
 func New(data string) *yyLexer {
@@ -73,18 +74,19 @@ func (yylex *yyLexer) currRune() rune {
 }
 
 func (yylex *yyLexer) Next() (int, error) {
-start:
+yystart:
 	if yylex.currPos >= yylex.length {
 		return 0, EOF
 	}
 	for yylex.currPos <= yylex.length {
-		nxStID := yyNextStep(yylex.currStateID, yylex.currRune())
-		if nxStID == 0 {
-			YYtext = string(yylex.data[yylex.beginPos : yylex.finPos+1])
-			newCurrPos := yylex.finPos + 1
-			yylex.beginPos = newCurrPos
-			yylex.finPos = newCurrPos
-			yylex.currPos = newCurrPos
+		yyNxStID := yyNextStep(yylex.currStateID, yylex.currRune())
+		if yyNxStID == 0 {
+			yylex.YYText = string(yylex.data[yylex.beginPos : yylex.finPos+1])
+			YYText = yylex.YYText
+			yyNewCurrPos := yylex.finPos + 1
+			yylex.beginPos = yyNewCurrPos
+			yylex.finPos = yyNewCurrPos
+			yylex.currPos = yyNewCurrPos
 			yylex.currStateID = 1
 
 			regexID := yylex.finRegexID
@@ -97,11 +99,11 @@ start:
 				return 0, ErrYYScan
 			}
 		}
-		if _, ok := yyFinStates[nxStID]; ok {
+		if _, ok := yyFinStates[yyNxStID]; ok {
 			yylex.finPos = yylex.currPos
-			yylex.finRegexID = yyStateIDToRegexID[nxStID]
+			yylex.finRegexID = yyStateIDToRegexID[yyNxStID]
 		}
-		yylex.currStateID = nxStID
+		yylex.currStateID = yyNxStID
 		yylex.currPos++
 	}
 

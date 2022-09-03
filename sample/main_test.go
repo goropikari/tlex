@@ -52,7 +52,7 @@ func foo000() int {
 			return
 		}
 		ns = append(ns, n)
-		strs = append(strs, YYtext)
+		strs = append(strs, lex.YYText)
 	}
 
 	if len(expected) != len(ns) {
