@@ -3,9 +3,9 @@ package automata
 import (
 	"container/list"
 
-	"github.com/goropikari/golex/collection"
-	"github.com/goropikari/golex/math"
-	"github.com/goropikari/golex/utils/counter"
+	"github.com/goropikari/tlex/collection"
+	"github.com/goropikari/tlex/math"
+	"github.com/goropikari/tlex/utils/counter"
 )
 
 type ImdNFATransition map[collection.Pair[StateID, rune]]*StateSet

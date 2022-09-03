@@ -8,8 +8,8 @@ import (
 
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
-	"github.com/goropikari/golex/collection"
-	"github.com/goropikari/golex/utils/guid"
+	"github.com/goropikari/tlex/collection"
+	"github.com/goropikari/tlex/utils/guid"
 	"golang.org/x/exp/slices"
 )
 

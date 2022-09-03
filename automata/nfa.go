@@ -1,8 +1,8 @@
 package automata
 
 import (
-	"github.com/goropikari/golex/collection"
-	"github.com/goropikari/golex/utils/guid"
+	"github.com/goropikari/tlex/collection"
+	"github.com/goropikari/tlex/utils/guid"
 )
 
 type NFATransition map[collection.Pair[State, rune]]*collection.Set[State]

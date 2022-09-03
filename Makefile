@@ -11,4 +11,4 @@ build:
 
 dot:
 	go test ./automata/ -run TestDot
-#	go test golex.go > ex.dot; dot -Kdot -Tpng ex.dot -oex.png
+#	go test tlex.go > ex.dot; dot -Kdot -Tpng ex.dot -oex.png

@@ -1,24 +1,26 @@
-# golex: Toy implementation of Lexical analyzer generator
+![](image/logo.png)
 
-golex is lexical analyzer generator such as Lex.
+# tlex: Toy LEXical analyzer generator
+
+tlex is lexical analyzer generator such as Lex.
 This is toy implementation for my study, so don't use for production.
-golex supports only ASCII string, doesn't do unicode.
+tlex supports only ASCII string, doesn't do unicode.
 
 
 ```bash
-$ go install github.com/goropikari/golex@v0.3.0
+$ go install github.com/goropikari/tlex@v0.3.0
 
-$ golex -h
-Usage of ./golex:
+$ tlex -h
+Usage of ./tlex:
   -o string
-        generated file path (default "golex.yy.go")
+        generated file path (default "tlex.yy.go")
   -pkg string
         generated go file package name (default "main")
   -src string
         input lexer configuration file
 
-# golex [-src srcfile] [-pkg output_pkg_name] [-o outfile]
-$ golex -src sample.l -pkg main -o main.go
+# tlex [-src srcfile] [-pkg output_pkg_name] [-o outfile]
+$ tlex -src sample.l -pkg main -o main.go
 $ go run main.go
 
 func foo123bar() int {

@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	stdmath "math"
 
-	"github.com/goropikari/golex/collection"
+	"github.com/goropikari/tlex/collection"
 )
 
 const epsilon = 'ε'

@@ -276,7 +276,7 @@ yystart:
 // This part is optional
 func main() {
 	program := `hello world
-hello golex
+hello tlex
 `
 	fmt.Println(program)
 	fmt.Println("-----------------")

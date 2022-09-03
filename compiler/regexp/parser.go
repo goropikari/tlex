@@ -4,8 +4,8 @@ import (
 	"errors"
 	"io"
 
-	"github.com/goropikari/golex/automata"
-	"github.com/goropikari/golex/collection"
+	"github.com/goropikari/tlex/automata"
+	"github.com/goropikari/tlex/collection"
 )
 
 var (

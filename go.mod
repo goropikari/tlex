@@ -1,4 +1,4 @@
-module github.com/goropikari/golex
+module github.com/goropikari/tlex
 
 go 1.19
 

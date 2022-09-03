@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/goccy/go-graphviz"
-	"github.com/goropikari/golex/automata"
-	"github.com/goropikari/golex/compiler/regexp"
+	"github.com/goropikari/tlex/automata"
+	"github.com/goropikari/tlex/compiler/regexp"
 	"github.com/stretchr/testify/require"
 )
 

@@ -9,9 +9,9 @@ import (
 	"os"
 	"text/template"
 
-	"github.com/goropikari/golex/automata"
-	"github.com/goropikari/golex/collection"
-	"github.com/goropikari/golex/compiler/regexp"
+	"github.com/goropikari/tlex/automata"
+	"github.com/goropikari/tlex/collection"
+	"github.com/goropikari/tlex/compiler/regexp"
 	"golang.org/x/tools/imports"
 )
 
@@ -77,7 +77,7 @@ func Generate(r *bufio.Reader, pkgName string, outfile string) {
 		panic(err)
 	}
 
-	// outfile := "golex.yy.go"
+	// outfile := "tlex.yy.go"
 	f, err := os.OpenFile(outfile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Fatal(err)

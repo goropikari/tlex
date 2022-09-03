@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/goropikari/golex/compiler/lex"
+	"github.com/goropikari/tlex/compiler/lex"
 )
 
 var (
@@ -22,7 +22,7 @@ func main() {
 	// defer profile.Start(profile.ProfilePath(".")).Stop()
 	flag.StringVar(&pkgName, "pkg", "main", "generated go file package name")
 	flag.StringVar(&srcfile, "src", "", "input lexer configuration file")
-	flag.StringVar(&outfile, "o", "golex.yy.go", "generated file path")
+	flag.StringVar(&outfile, "o", "tlex.yy.go", "generated file path")
 	flag.Parse()
 	if srcfile == "" {
 		fmt.Fprint(os.Stderr, "srcfile is required.\n")

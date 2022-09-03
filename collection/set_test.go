@@ -3,7 +3,7 @@ package collection_test
 import (
 	"testing"
 
-	"github.com/goropikari/golex/collection"
+	"github.com/goropikari/tlex/collection"
 	"github.com/stretchr/testify/require"
 )
 

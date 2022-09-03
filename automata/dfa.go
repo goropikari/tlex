@@ -1,7 +1,7 @@
 package automata
 
 import (
-	"github.com/goropikari/golex/collection"
+	"github.com/goropikari/tlex/collection"
 )
 
 const blackHoleStateID = 0
