@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/goropikari/tlex/compiler/lex"
+	"github.com/goropikari/tlex/compiler/generator"
 )
 
 var (
@@ -33,5 +33,5 @@ func main() {
 		log.Fatal(err)
 	}
 	r := bufio.NewReader(f)
-	lex.Generate(r, pkgName, outfile)
+	generator.Generate(r, pkgName, outfile)
 }
