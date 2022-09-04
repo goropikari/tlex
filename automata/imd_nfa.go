@@ -67,6 +67,11 @@ func (nfa ImdNFA) calRegID(ss *StateSet) RegexID {
 	return regID
 }
 
+func (nfa ImdNFA) step(sid StateID, b byte) (*StateSet, bool) {
+	nxid, ok := nfa.delta.step(sid, b)
+	return nxid, ok
+}
+
 func (nfa ImdNFA) ToDFA() DFA {
 	states, delta, initState, finStates := nfa.subsetConstruction()
 
@@ -138,7 +143,7 @@ func (nfa ImdNFA) subsetConstruction() (states *StateSetDict[StateID], delta *St
 			fromIter := from.iterator()
 			for fromIter.HasNext() {
 				fromStID := fromIter.Next()
-				if nxs, ok := nfa.delta.step(fromStID, b); ok {
+				if nxs, ok := nfa.step(fromStID, b); ok {
 					nxsIter := nxs.iterator()
 					for nxsIter.HasNext() {
 						nxStID := nxsIter.Next()
@@ -183,7 +188,7 @@ func (nfa ImdNFA) eclosure(x StateID) *StateSet {
 		que.Remove(front)
 		top := front.Value.(StateID)
 
-		if nxs, ok := nfa.delta.step(top, epsilon); ok {
+		if nxs, ok := nfa.step(top, epsilon); ok {
 			closure = closure.Union(nxs)
 			nxsIter := nxs.iterator()
 			for nxsIter.HasNext() {

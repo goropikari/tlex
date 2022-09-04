@@ -26,16 +26,17 @@ type LexerTemplate struct {
 }
 
 func Generate(r *bufio.Reader, pkgName string, outfile string) {
+	// parse lexer configuration
 	parser := NewParser(r)
 	def, rules, userCode := parser.Parse()
 
+	// compile regex and generate DFA
 	regexs := make([]string, 0)
 	actions := make([]string, 0)
 	for _, v := range rules {
 		regexs = append(regexs, v[0])
 		actions = append(actions, v[1])
 	}
-
 	dfa := lexerDFA(regexs)
 	stToID := make(map[automata.State]int)
 	id := 1
@@ -55,6 +56,7 @@ func Generate(r *bufio.Reader, pkgName string, outfile string) {
 		idToRegexID[id] = dfa.GetRegexID(st)
 	}
 
+	// generate lexer file
 	embeddedTmpl := def
 	stateIDToRegexIDTmpl := genStIdToRegexID(idToRegexID)
 	finStatesTmpl := genFinStates(idToSt, dfa.GetFinStates())
@@ -79,7 +81,6 @@ func Generate(r *bufio.Reader, pkgName string, outfile string) {
 		panic(err)
 	}
 
-	// outfile := "tlex.yy.go"
 	f, err := os.OpenFile(outfile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Fatal(err)
