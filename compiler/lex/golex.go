@@ -48,13 +48,15 @@ func Generate(r *bufio.Reader, pkgName string, outfile string) {
 		stToID[st] = id
 		id++
 	}
-	idToSt := make([]automata.State, len(stToID)+1)
-	for k, v := range stToID {
-		idToSt[v] = k
+	idToSt := make([]automata.State, id)
+	idToRegexID := make([]automata.RegexID, id)
+	for st, id := range stToID {
+		idToSt[id] = st
+		idToRegexID[id] = dfa.GetRegexID(st)
 	}
 
 	embeddedTmpl := def
-	stateIDToRegexIDTmpl := genStIdToRegexID(idToSt)
+	stateIDToRegexIDTmpl := genStIdToRegexID(idToRegexID)
 	finStatesTmpl := genFinStates(idToSt, dfa.GetFinStates())
 	transitionTableTmpl := genTransitionTable(stToID, idToSt, dfa.GetTransitionTable())
 	regexActionsTmpl := genRegexActions(actions)
@@ -92,10 +94,10 @@ func Generate(r *bufio.Reader, pkgName string, outfile string) {
 	}
 }
 
-func genStIdToRegexID(idToSt []automata.State) string {
+func genStIdToRegexID(idToRegexID []automata.RegexID) string {
 	var buf bytes.Buffer
-	for _, st := range idToSt[1:] {
-		buf.WriteString(fmt.Sprintf("%v,\n", st.GetRegexID()))
+	for _, rid := range idToRegexID[1:] {
+		buf.WriteString(fmt.Sprintf("%v,\n", rid))
 	}
 
 	return buf.String()
@@ -139,10 +141,9 @@ func genTransitionTable(stToID map[automata.State]int, idToSt []automata.State, 
 	}
 
 	return buf.String()
-
 }
 
-func lexerDFA(regexs []string) automata.DFA {
+func lexerNFA(regexs []string) automata.NFA {
 	nfas := make([]*automata.NFA, 0)
 	for i, regex := range regexs {
 		nfa := parse(regex)
@@ -152,8 +153,14 @@ func lexerDFA(regexs []string) automata.DFA {
 
 	nfa := *nfas[0]
 	for _, n := range nfas[1:] {
-		nfa = nfa.Sum(*n)
+		nfa = nfa.SumWithRegexID(*n)
 	}
+
+	return nfa
+}
+
+func lexerDFA(regexs []string) automata.DFA {
+	nfa := lexerNFA(regexs)
 
 	return nfa.ToImNFA().ToDFA().LexerMinimize().RemoveBH()
 }

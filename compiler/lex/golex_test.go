@@ -1,4 +1,4 @@
-package automata_test
+package lex_test
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/goccy/go-graphviz"
 	"github.com/goropikari/tlex/automata"
-	"github.com/goropikari/tlex/compiler/regexp"
+	"github.com/goropikari/tlex/compiler/lex"
 	"github.com/stretchr/testify/require"
 )
 
@@ -171,7 +171,7 @@ func TestDFA_Accept(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			dfa := lexerNFA(tt.regexs).ToImNFA().ToDFA().LexerMinimize().RemoveBH()
+			dfa := lex.LexerNFA(tt.regexs).ToImNFA().ToDFA().LexerMinimize().RemoveBH()
 
 			regexID, accept := dfa.Accept(tt.given)
 
@@ -183,13 +183,13 @@ func TestDFA_Accept(t *testing.T) {
 
 func TestDot(t *testing.T) {
 	// // generate dot file
-	s, _ := lexerNFA([]string{"a", "abb", "a*bb*"}).
+	s, _ := lex.LexerNFA([]string{"a", "abb", "a*bb*"}).
 		ToImNFA().
 		ToDFA().
 		LexerMinimize().
 		RemoveBH().
 		ToDot()
-	// s, _ := lexerNFA([]string{
+	// s, _ := lex.LexerNFA([]string{
 	// 	"if|for|while|func|return",
 	// 	"[a-zA-Z][a-zA-Z0-9]*",
 	// 	"[1-9][0-9]*",
@@ -201,7 +201,7 @@ func TestDot(t *testing.T) {
 	// 	"\\+|\\-|\\*|/|:=|==|!=",
 	// 	".",
 	// }).ToImNFA().ToDFA().LexerMinimize().RemoveBH().ToDot()
-	// s, _ := lexerNFA([]string{".*"}).
+	// s, _ := lex.LexerNFA([]string{".*"}).
 	// 	ToImNFA().
 	// 	ToDFA().
 	// 	LexerMinimize().
@@ -220,31 +220,4 @@ func TestDot(t *testing.T) {
 		log.Fatal(err)
 	}
 
-}
-
-func lexerNFA(regexs []string) automata.NFA {
-	nfas := make([]*automata.NFA, 0)
-	for i, regex := range regexs {
-		nfa := parse(regex)
-		(&nfa).SetRegexID(automata.RegexID(i + 1))
-		nfas = append(nfas, &nfa)
-	}
-
-	nfa := *nfas[0]
-	for _, n := range nfas[1:] {
-		nfa = nfa.Sum(*n)
-	}
-
-	return nfa
-}
-
-func parse(regex string) automata.NFA {
-	lex := regexp.NewLexer(regex)
-	tokens := lex.Scan()
-	parser := regexp.NewParser(tokens)
-	ast, _ := parser.Parse()
-	gen := regexp.NewCodeGenerator()
-	ast.Accept(gen)
-
-	return gen.GetNFA()
 }

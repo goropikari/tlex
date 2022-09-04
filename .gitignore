@@ -3,3 +3,4 @@
 *.dot
 *.pdf
 ex.png
+cpu.pprof

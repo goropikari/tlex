@@ -31,39 +31,26 @@ type Nothing struct{}
 
 var nothing = Nothing{}
 
+type StateIDToRegexID map[StateID]RegexID
+
+func (mp StateIDToRegexID) Get(sid StateID) RegexID {
+	return mp[sid]
+}
+
+func (mp StateIDToRegexID) Set(sid StateID, rid RegexID) {
+	mp[sid] = rid
+}
+
 type State struct {
-	id      StateID
-	regexID RegexID
+	id StateID
 }
 
 func NewState(id StateID) State {
-	return State{id: id, regexID: RegexID(nonFinStateRegexID)}
-}
-
-func NewStateWithRegexID(id StateID, regexID RegexID) State {
-	return State{
-		id:      id,
-		regexID: regexID,
-	}
+	return State{id: id}
 }
 
 func (st State) GetID() StateID {
 	return st.id
-}
-
-func (st State) GetRegexID() RegexID {
-	if st.regexID == nonFinStateRegexID {
-		return 0
-	}
-	return st.regexID
-}
-
-func (st State) GetRawRegexID() RegexID {
-	return st.regexID
-}
-
-func (st *State) SetRegexID(id RegexID) {
-	st.regexID = id
 }
 
 type StateSet struct {

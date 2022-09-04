@@ -17,11 +17,11 @@ func (t NFATransition) Copy() NFATransition {
 }
 
 type NFA struct {
-	q          *collection.Set[State]
-	delta      NFATransition
-	initStates *collection.Set[State]
-	finStates  *collection.Set[State]
-	regexID    RegexID
+	q             *collection.Set[State]
+	delta         NFATransition
+	initStates    *collection.Set[State]
+	finStates     *collection.Set[State]
+	stIDToRegexID StateIDToRegexID
 }
 
 func NewNFA(
@@ -32,15 +32,25 @@ func NewNFA(
 	return NFA{
 		q: q,
 		// sigma:      sigma,
-		delta:      delta,
-		initStates: initStates,
-		finStates:  finStates,
-		regexID:    0,
+		delta:         delta,
+		initStates:    initStates,
+		finStates:     finStates,
+		stIDToRegexID: make(StateIDToRegexID),
+	}
+}
+
+func NewNFAWithRegexIDMap(q *collection.Set[State], delta NFATransition, initState *collection.Set[State], finState *collection.Set[State], stIDToRegexID map[StateID]RegexID) NFA {
+	return NFA{
+		q:             q,
+		delta:         delta,
+		initStates:    initState,
+		finStates:     finState,
+		stIDToRegexID: stIDToRegexID,
 	}
 }
 
 func (nfa NFA) Copy() NFA {
-	return NewNFA(nfa.q.Copy(), nfa.delta.Copy(), nfa.initStates.Copy(), nfa.finStates.Copy())
+	return NewNFAWithRegexIDMap(nfa.q.Copy(), nfa.delta.Copy(), nfa.initStates.Copy(), nfa.finStates.Copy(), nfa.stIDToRegexID)
 }
 
 func (nfa NFA) Concat(other NFA) NFA {
@@ -104,6 +114,20 @@ func (nfa NFA) Sum(other NFA) NFA {
 	return NewNFA(nfa.q, nfa.delta, nfa.initStates, nfa.finStates)
 }
 
+func (nfa NFA) SumWithRegexID(other NFA) NFA {
+	stIDToRegexID := make(StateIDToRegexID)
+	for k, v := range nfa.stIDToRegexID {
+		stIDToRegexID.Set(k, v)
+	}
+	for k, v := range other.stIDToRegexID {
+		stIDToRegexID.Set(k, v)
+	}
+
+	nfa = nfa.Sum(other)
+
+	return NewNFAWithRegexIDMap(nfa.q, nfa.delta, nfa.initStates, nfa.finStates, stIDToRegexID)
+}
+
 func (nfa NFA) Star() NFA {
 	nfa = nfa.Copy()
 
@@ -131,35 +155,39 @@ func (nfa NFA) Star() NFA {
 func (nfa NFA) ToImNFA() ImdNFA {
 	nfa = nfa.relabelStateIDs()
 	maxID := nfa.q.Size()
-	n := maxID + 1
-	stIDToRegID := make([]RegexID, n)
+	numst := maxID + 1 // +1 means black hole state
+	stIDToRegID := make([]RegexID, numst)
 	qiter := nfa.q.Iterator()
 	for qiter.HasNext() {
 		st := qiter.Next()
-		stIDToRegID[st.GetID()] = st.regexID
+		sid := st.GetID()
+		stIDToRegID[sid] = nfa.stIDToRegexID.Get(sid)
 	}
 	delta := make(ImdNFATransition)
 	for pair, tos := range nfa.delta {
 		from := pair.First
 		b := pair.Second
-		delta[collection.NewPair(from.GetID(), b)] = buildStateSet(n, tos)
+		delta[collection.NewPair(from.GetID(), b)] = buildStateSet(numst, tos)
 	}
-	initStates := buildStateSet(n, nfa.initStates)
-	finStates := buildStateSet(n, nfa.finStates)
+	initStates := buildStateSet(numst, nfa.initStates)
+	finStates := buildStateSet(numst, nfa.finStates)
 
 	return NewImdNFA(maxID, stIDToRegID, delta, initStates, finStates)
 }
 
 func (nfa NFA) relabelStateIDs() NFA {
 	nfa = nfa.Copy()
+
 	id := StateID(1)
 	oldToNewID := map[StateID]StateID{}
+	newStIDToRegexID := make(StateIDToRegexID)
+	oldStIDToRegexID := nfa.stIDToRegexID
 	newq := collection.NewSet[State]()
 	qiter := nfa.q.Iterator()
 	for qiter.HasNext() {
 		oldst := qiter.Next()
 		newst := NewState(id)
-		newst.SetRegexID(oldst.GetRawRegexID())
+		newStIDToRegexID.Set(id, oldStIDToRegexID.Get(oldst.GetID()))
 		newq.Insert(newst)
 		oldToNewID[oldst.GetID()] = id
 		id++
@@ -171,13 +199,11 @@ func (nfa NFA) relabelStateIDs() NFA {
 		b := pair.Second
 
 		newfrom := NewState(oldToNewID[oldfrom.GetID()])
-		newfrom.SetRegexID(oldfrom.GetRawRegexID())
 		newtos := collection.NewSet[State]()
 		titer := tos.Iterator()
 		for titer.HasNext() {
 			oldto := titer.Next()
 			newto := NewState(oldToNewID[oldto.GetID()])
-			newto.SetRegexID(oldto.GetRawRegexID())
 			newtos.Insert(newto)
 		}
 		newdelta[collection.NewPair(newfrom, b)] = newtos
@@ -188,7 +214,6 @@ func (nfa NFA) relabelStateIDs() NFA {
 	for iiter.HasNext() {
 		oldst := iiter.Next()
 		newst := NewState(oldToNewID[oldst.GetID()])
-		newst.SetRegexID(oldst.GetRawRegexID())
 		newInitStates.Insert(newst)
 	}
 
@@ -197,11 +222,10 @@ func (nfa NFA) relabelStateIDs() NFA {
 	for fiter.HasNext() {
 		oldst := fiter.Next()
 		newst := NewState(oldToNewID[oldst.GetID()])
-		newst.SetRegexID(oldst.GetRawRegexID())
 		newFinStates.Insert(newst)
 	}
 
-	return NewNFA(newq, newdelta, newInitStates, newFinStates)
+	return NewNFAWithRegexIDMap(newq, newdelta, newInitStates, newFinStates, newStIDToRegexID)
 }
 
 func buildStateSet(n int, tos *collection.Set[State]) *StateSet {
@@ -214,56 +238,17 @@ func buildStateSet(n int, tos *collection.Set[State]) *StateSet {
 	return bs
 }
 
-func (nfa *NFA) SetRegexID(id RegexID) {
-	nfa2 := nfa.Copy()
-
-	q := collection.NewSet[State]()
-	initStates := collection.NewSet[State]()
-	finStates := collection.NewSet[State]()
-	delta := make(NFATransition)
-
-	qiter := nfa2.q.Iterator()
-	for qiter.HasNext() {
-		st := qiter.Next()
+func (nfa *NFA) SetRegexID(regid RegexID) {
+	stIDToRegexID := make(StateIDToRegexID)
+	iter := nfa.q.Iterator()
+	for iter.HasNext() {
+		st := iter.Next()
 		if nfa.finStates.Contains(st) {
-			st.SetRegexID(id)
+			stIDToRegexID.Set(st.GetID(), regid)
+		} else {
+			stIDToRegexID.Set(st.GetID(), nonFinStateRegexID)
 		}
-		q.Insert(st)
-	}
-	iiter := nfa2.initStates.Iterator()
-	for iiter.HasNext() {
-		st := iiter.Next()
-		if nfa.finStates.Contains(st) {
-			st.SetRegexID(id)
-		}
-		initStates.Insert(st)
-	}
-	fiter := nfa2.finStates.Iterator()
-	for fiter.HasNext() {
-		st := fiter.Next()
-		st.SetRegexID(id)
-		finStates.Insert(st)
-	}
-	for pair, sts := range nfa2.delta {
-		from := pair.First
-		if nfa.finStates.Contains(from) {
-			from.SetRegexID(id)
-		}
-		b := pair.Second
-		nss := collection.NewSet[State]()
-		siter := sts.Iterator()
-		for siter.HasNext() {
-			to := siter.Next()
-			if nfa.finStates.Contains(to) {
-				to.SetRegexID(id)
-			}
-			nss.Insert(to)
-		}
-		delta[collection.NewPair(from, b)] = nss
 	}
 
-	nfa2 = NewNFA(q, delta, initStates, finStates)
-	nfa2.regexID = id
-
-	*nfa = nfa2
+	nfa.stIDToRegexID = stIDToRegexID
 }

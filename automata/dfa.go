@@ -76,18 +76,20 @@ func (iter *DFATransitionIterator) Next() (collection.Pair[State, byte], State) 
 }
 
 type DFA struct {
-	q         *collection.Set[State]
-	delta     *DFATransition
-	initState State
-	finStates *collection.Set[State]
+	q             *collection.Set[State]
+	delta         *DFATransition
+	initState     State
+	finStates     *collection.Set[State]
+	stIDToRegexID StateIDToRegexID
 }
 
-func NewDFA(q *collection.Set[State], delta *DFATransition, initState State, finStates *collection.Set[State]) DFA {
+func NewDFA(q *collection.Set[State], delta *DFATransition, initState State, finStates *collection.Set[State], stIDToRegexID StateIDToRegexID) DFA {
 	return DFA{
-		q:         q,
-		delta:     delta,
-		initState: initState,
-		finStates: finStates,
+		q:             q,
+		delta:         delta,
+		initState:     initState,
+		finStates:     finStates,
+		stIDToRegexID: stIDToRegexID,
 	}
 }
 
@@ -107,15 +109,9 @@ func (dfa DFA) GetTransitionTable() *DFATransition {
 	return dfa.delta
 }
 
-// func (dfa DFA) ToNFA() NFA {
-// 	dfa = dfa.Copy().Minimize()
-// 	delta := make(NFATransition)
-// 	for pair, to := range dfa.delta {
-// 		delta[pair] = collection.NewSet[State]().Insert(to)
-// 	}
-
-// 	return NewNFA(dfa.q, delta, collection.NewSet[State]().Insert(dfa.initState), dfa.finStates)
-// }
+func (dfa DFA) GetRegexID(st State) RegexID {
+	return dfa.stIDToRegexID.Get(st.GetID())
+}
 
 func (dfa DFA) Accept(s string) (RegexID, bool) {
 	currSt := dfa.initState
@@ -131,7 +127,7 @@ func (dfa DFA) Accept(s string) (RegexID, bool) {
 		}
 	}
 
-	return currSt.GetRegexID(), dfa.finStates.Contains(currSt)
+	return dfa.stIDToRegexID.Get(currSt.GetID()), dfa.finStates.Contains(currSt)
 }
 
 func (dfa DFA) Step(st State, b byte) (State, bool) {
@@ -139,7 +135,7 @@ func (dfa DFA) Step(st State, b byte) (State, bool) {
 }
 
 func (dfa DFA) Copy() DFA {
-	return NewDFA(dfa.q.Copy(), dfa.delta.Copy(), dfa.initState, dfa.finStates.Copy())
+	return NewDFA(dfa.q.Copy(), dfa.delta.Copy(), dfa.initState, dfa.finStates.Copy(), dfa.stIDToRegexID)
 }
 
 func (dfa DFA) Totalize() DFA {
@@ -160,7 +156,7 @@ func (dfa DFA) Totalize() DFA {
 	}
 
 	if changed {
-		return NewDFA(states, delta, dfa.initState, dfa.finStates)
+		return NewDFA(states, delta, dfa.initState, dfa.finStates, dfa.stIDToRegexID)
 	}
 
 	return dfa
@@ -257,7 +253,7 @@ func (dfa DFA) grouping() []*stateGroup {
 	for qiter.HasNext() {
 		st := qiter.Next()
 		stID := st.GetID()
-		regID := st.GetRawRegexID()
+		regID := dfa.stIDToRegexID.Get(stID)
 		regSts[regID] = append(regSts[regID], stID)
 		stIDToState[stID] = st
 	}
@@ -326,6 +322,7 @@ func (dfa DFA) grouping() []*stateGroup {
 	return stGrps
 }
 
+// minimize したあとの StateID は連番にはなっていない
 func (dfa DFA) LexerMinimize() DFA {
 	dfa = dfa.Totalize()
 	groups := dfa.grouping()
@@ -348,8 +345,11 @@ func (dfa DFA) LexerMinimize() DFA {
 	}
 
 	q := collection.NewSet[State]()
+	stIDToRegexID := make(StateIDToRegexID)
 	for _, st := range sts {
-		q.Insert(stIDToState[uf.Find(st.GetID())])
+		leaderID := uf.Find(st.GetID())
+		q.Insert(stIDToState[leaderID])
+		stIDToRegexID.Set(leaderID, dfa.stIDToRegexID.Get(leaderID))
 	}
 
 	initState := stIDToState[uf.Find(dfa.initState.GetID())]
@@ -371,5 +371,5 @@ func (dfa DFA) LexerMinimize() DFA {
 		finStates.Insert(stIDToState[uf.Find(st.GetID())])
 	}
 
-	return NewDFA(q, delta, initState, finStates)
+	return NewDFA(q, delta, initState, finStates, stIDToRegexID)
 }

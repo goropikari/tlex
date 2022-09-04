@@ -71,12 +71,14 @@ func (nfa ImdNFA) ToDFA() DFA {
 	states, delta, initState, finStates := nfa.subsetConstruction()
 
 	dfaStates := collection.NewSet[State]()
+	dfaStIDToRegexID := make(map[StateID]RegexID)
 	ssToSt := NewStateSetDict[State]()
 	siter := states.iterator()
 	for siter.HasNext() {
 		ss, newSid := siter.Next()
 		regID := nfa.calRegID(ss)
-		st := NewStateWithRegexID(newSid, regID)
+		dfaStIDToRegexID[newSid] = regID
+		st := NewState(newSid)
 		dfaStates.Insert(st)
 		ssToSt.Set(ss, st)
 	}
@@ -102,7 +104,7 @@ func (nfa ImdNFA) ToDFA() DFA {
 		dfaFinStates.Insert(st)
 	}
 
-	return NewDFA(dfaStates, dfaDelta, dfaInitState, dfaFinStates)
+	return NewDFA(dfaStates, dfaDelta, dfaInitState, dfaFinStates, dfaStIDToRegexID)
 }
 
 func (nfa ImdNFA) subsetConstruction() (states *StateSetDict[StateID], delta *StateSetDict[map[byte]*StateSet], initState *StateSet, finStates *StateSetDict[Nothing]) {

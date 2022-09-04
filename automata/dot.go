@@ -126,7 +126,6 @@ func (nfa ImdNFA) ToDot() (string, error) {
 			si++
 		}
 		st := NewState(StateID(id))
-		st.SetRegexID(nfa.stIDToRegID[StateID(id)])
 		nodes[st] = n
 	}
 
@@ -134,14 +133,12 @@ func (nfa ImdNFA) ToDot() (string, error) {
 		from := st.First
 		symbol := string(st.Second)
 		fromst := NewState(from)
-		fromst.SetRegexID(nfa.stIDToRegID[from])
 		for id := 1; id <= nfa.maxID; id++ {
 			sid := StateID(id)
 			if !qs.Contains(sid) {
 				continue
 			}
 			tost := NewState(sid)
-			tost.SetRegexID(nfa.stIDToRegID[id])
 			e, err := graph.CreateEdge(charLabel(symbol), nodes[fromst], nodes[tost])
 			if err != nil {
 				return "", err
@@ -193,14 +190,13 @@ func (dfa DFA) ToDot() (string, error) {
 		}
 		if dfa.finStates.Contains(s) {
 			n.SetShape(cgraph.DoubleCircleShape)
-			n.SetLabel(fmt.Sprintf("F%v_%v", fi, toStateRegexID(s.GetRegexID())))
+			n.SetLabel(fmt.Sprintf("F%v_%v", fi, toStateRegexID(dfa.GetRegexID(s))))
 			fi++
 		} else if s.GetID() == blackHoleStateID {
-			// n.SetLabel(blackHole)
 			n.SetLabel("BH")
 		} else {
 			n.SetShape(cgraph.CircleShape)
-			n.SetLabel(fmt.Sprintf("S%v_%v", si, toStateRegexID(s.GetRegexID())))
+			n.SetLabel(fmt.Sprintf("S%v_%v", si, toStateRegexID(dfa.GetRegexID(s))))
 			si++
 		}
 		nodes[s] = n
