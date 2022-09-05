@@ -30,8 +30,7 @@ func NewNFA(
 	initStates *collection.Set[State],
 	finStates *collection.Set[State]) NFA {
 	return NFA{
-		q: q,
-		// sigma:      sigma,
+		q:             q,
 		delta:         delta,
 		initStates:    initStates,
 		finStates:     finStates,
