@@ -259,7 +259,7 @@ func (dfa DFA) grouping() []*stateGroup {
 	}
 
 	grps := make([][]StateID, 0)
-	uf := newStateGrouping(numst)
+	uf := newStateUnionFind(numst)
 	for _, stIDs := range regSts {
 		for _, stID := range stIDs[1:] {
 			uf.Unite(stIDs[0], stID)
@@ -273,7 +273,7 @@ func (dfa DFA) grouping() []*stateGroup {
 	splitted := true
 	for splitted {
 		splitted = false
-		newuf := newStateGrouping(numst)
+		newuf := newStateUnionFind(numst)
 
 		for _, group := range grps {
 			for i, s0 := range group {
@@ -332,7 +332,7 @@ func (dfa DFA) LexerMinimize() DFA {
 		stIDToState[st.GetID()] = st
 	}
 
-	uf := newStateGrouping(dfa.q.Size() + 1)
+	uf := newStateUnionFind(dfa.q.Size() + 1)
 	for _, g := range groups {
 		n := g.size()
 		if n == 1 {

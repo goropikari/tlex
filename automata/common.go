@@ -9,7 +9,7 @@ import (
 
 const asciiSize = 1 << 7
 
-const epsilon = byte(0)
+const epsilon = byte(255)
 const nonFinStateRegexID RegexID = stdmath.MaxInt
 
 var SupportedChars = []byte{}
@@ -206,7 +206,7 @@ type stateUnionFind struct {
 	uf *collection.UnionFind
 }
 
-func newStateGrouping(n int) *stateUnionFind {
+func newStateUnionFind(n int) *stateUnionFind {
 	return &stateUnionFind{
 		uf: collection.NewUnionFind(n),
 	}
