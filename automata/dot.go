@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"strings"
+	"os"
 
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
+	"github.com/golang/freetype/truetype"
 	"github.com/goropikari/tlex/collection"
 	"github.com/goropikari/tlex/utils/guid"
-	"golang.org/x/exp/slices"
+	"golang.org/x/image/font"
 )
 
 func (nfa NFA) ToDot() (string, error) {
@@ -31,9 +32,9 @@ func (nfa NFA) ToDot() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	nodes := make(map[State]*cgraph.Node)
+	nodes := make(map[StateID]*cgraph.Node)
 	ii, si, fi := 0, 0, 0
-	qiter := nfa.q.Iterator()
+	qiter := nfa.states.Iterator()
 	for qiter.HasNext() {
 		s := qiter.Next()
 		n, err := graph.CreateNode(fmt.Sprintf("%v", guid.New())) // assign unique node id
@@ -46,12 +47,12 @@ func (nfa NFA) ToDot() (string, error) {
 				return "", err
 			}
 			n.SetLabel(fmt.Sprintf("I%v", ii))
-			e.SetLabel(string(epsilon))
+			e.SetLabel("ε")
 			ii++
 		}
 		if nfa.finStates.Contains(s) {
 			n.SetShape(cgraph.DoubleCircleShape)
-			n.SetLabel(fmt.Sprintf("F%v", fi))
+			n.SetLabel(fmt.Sprintf("F%v_%v", fi, nfa.stIDToRegID.Get(s)))
 			fi++
 		} else {
 			n.SetShape(cgraph.CircleShape)
@@ -61,22 +62,58 @@ func (nfa NFA) ToDot() (string, error) {
 		nodes[s] = n
 	}
 
-	for st, qs := range nfa.delta {
-		from := st.First
-		symbol := string(st.Second)
-		qsiter := qs.Iterator()
-		for qsiter.HasNext() {
-			to := qsiter.Next()
-			e, err := graph.CreateEdge(charLabel(symbol), nodes[from], nodes[to])
-			if err != nil {
-				return "", err
+	edges := make(map[collection.Pair[StateID, StateID]]string)
+	for from, mp := range nfa.trans.mp {
+		for intv, tos := range mp {
+			symbols := fmt.Sprintf("[%c-%c]", intv.l, intv.r)
+			titer := tos.Iterator()
+			for titer.HasNext() {
+				to := titer.Next()
+				if v, ok := edges[collection.NewPair(from, to)]; ok {
+					edges[collection.NewPair(from, to)] = v + "\n" + symbols
+				} else {
+					edges[collection.NewPair(from, to)] = symbols
+				}
 			}
-			e.SetLabel(charLabel(symbol))
+		}
+	}
+	for k, symbols := range edges {
+		from := k.First
+		to := k.Second
+		e, err := graph.CreateEdge(symbols, nodes[from], nodes[to])
+		if err != nil {
+			panic(err)
+		}
+		e.SetLabel(charLabel(symbols))
+	}
+
+	for from, tos := range nfa.epsilonTrans.mp {
+		iter := tos.Iterator()
+		for iter.HasNext() {
+			to := iter.Next()
+			e, err := graph.CreateEdge("ε", nodes[from], nodes[to])
+			if err != nil {
+				panic(err)
+			}
+			e.SetLabel(charLabel("ε"))
 		}
 	}
 
 	var buf bytes.Buffer
-	g.Render(graph, "dot", &buf)
+	// g.Render(graph, "dot", &buf)
+	// s := buf.String()
+
+	// if err := os.WriteFile("ex.dot", []byte(s), 0666); err != nil {
+	// 	log.Fatal(err)
+	// }
+	// graph, err := graphviz.ParseBytes([]byte(s))
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// g := graphviz.New()
+	if err := g.RenderFilename(graph, graphviz.PNG, "ex.png"); err != nil {
+		log.Fatal(err)
+	}
 
 	return buf.String(), nil
 }
@@ -99,62 +136,107 @@ func (nfa ImdNFA) ToDot() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	nodes := make(map[State]*cgraph.Node)
+	nodes := make(map[StateID]*cgraph.Node)
 	ii, si, fi := 0, 0, 0
-	for id := 1; id <= nfa.maxID; id++ {
-		sid := StateID(id)
+	for s := StateID(0); s < StateID(nfa.size); s++ {
 		n, err := graph.CreateNode(fmt.Sprintf("%v", guid.New())) // assign unique node id
 		if err != nil {
 			return "", err
 		}
-		if nfa.initStates.Contains(sid) {
+		if nfa.initStates.Contains(s) {
 			e, err := graph.CreateEdge(fmt.Sprintf("%v", guid.New()), start, n)
 			if err != nil {
 				return "", err
 			}
 			n.SetLabel(fmt.Sprintf("I%v", ii))
-			e.SetLabel(string(epsilon))
+			e.SetLabel("ε")
 			ii++
 		}
-		if nfa.finStates.Contains(sid) {
+		if nfa.finStates.Contains(s) {
 			n.SetShape(cgraph.DoubleCircleShape)
-			n.SetLabel(fmt.Sprintf("F%v", fi))
+			n.SetLabel(fmt.Sprintf("F%v_%v", fi, nfa.stIDToRegID.Get(s)))
 			fi++
 		} else {
 			n.SetShape(cgraph.CircleShape)
 			n.SetLabel(fmt.Sprintf("S%v", si))
 			si++
 		}
-		st := NewState(StateID(id))
-		nodes[st] = n
+		nodes[s] = n
 	}
 
-	for st, qs := range nfa.delta {
-		from := st.First
-		symbol := string(st.Second)
-		fromst := NewState(from)
-		for id := 1; id <= nfa.maxID; id++ {
-			sid := StateID(id)
-			if !qs.Contains(sid) {
-				continue
+	edges := make(map[collection.Pair[StateID, StateID]]string)
+	for from, mp := range nfa.trans.mp {
+		for intv, tos := range mp {
+			symbols := fmt.Sprintf("[%c-%c]", intv.l, intv.r)
+			titer := tos.iterator()
+			for titer.HasNext() {
+				to := titer.Next()
+				if v, ok := edges[collection.NewPair(from, to)]; ok {
+					edges[collection.NewPair(from, to)] = v + "\n" + symbols
+				} else {
+					edges[collection.NewPair(from, to)] = symbols
+				}
 			}
-			tost := NewState(sid)
-			e, err := graph.CreateEdge(charLabel(symbol), nodes[fromst], nodes[tost])
+		}
+	}
+	for k, symbols := range edges {
+		from := k.First
+		to := k.Second
+		e, err := graph.CreateEdge(symbols, nodes[from], nodes[to])
+		if err != nil {
+			panic(err)
+		}
+		e.SetLabel(charLabel(symbols))
+	}
+
+	for from, tos := range nfa.etrans.mp {
+		iter := tos.iterator()
+		for iter.HasNext() {
+			to := iter.Next()
+			e, err := graph.CreateEdge("ε", nodes[from], nodes[to])
 			if err != nil {
-				return "", err
+				panic(err)
 			}
-			e.SetLabel(charLabel(symbol))
+			e.SetLabel(charLabel("ε"))
 		}
 	}
 
 	var buf bytes.Buffer
-	g.Render(graph, "dot", &buf)
+	// g.Render(graph, "dot", &buf)
+	// s := buf.String()
+
+	// if err := os.WriteFile("ex.dot", []byte(s), 0666); err != nil {
+	// 	log.Fatal(err)
+	// }
+	// graph, err := graphviz.ParseBytes([]byte(s))
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// g := graphviz.New()
+	if err := g.RenderFilename(graph, graphviz.PNG, "ex.png"); err != nil {
+		log.Fatal(err)
+	}
 
 	return buf.String(), nil
 }
 
 func (dfa DFA) ToDot() (string, error) {
 	g := graphviz.New()
+
+	ftBinary, _ := os.ReadFile("./ipaexg00401/ipaexg.ttf")
+	ft, _ := truetype.Parse(ftBinary)
+	g.SetFontFace(func(size float64) (font.Face, error) {
+		opt := &truetype.Options{
+			Size:              size,
+			DPI:               0,
+			Hinting:           0,
+			GlyphCacheEntries: 0,
+			SubPixelsX:        0,
+			SubPixelsY:        0,
+		}
+		return truetype.NewFace(ft, opt), nil
+	})
+
 	graph, err := g.Graph()
 	if err != nil {
 		return "", err
@@ -171,66 +253,73 @@ func (dfa DFA) ToDot() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	start.SetShape(cgraph.PointShape)
-	nodes := make(map[State]*cgraph.Node)
-	si, fi := 0, 0
-	qiter := dfa.q.Iterator()
-	for qiter.HasNext() {
-		s := qiter.Next()
+	nodes := make(map[StateID]*cgraph.Node)
+	ii, si, fi := 0, 0, 0
+	siter := dfa.states.Iterator()
+	for siter.HasNext() {
+		s := siter.Next()
 		n, err := graph.CreateNode(fmt.Sprintf("%v", guid.New())) // assign unique node id
 		if err != nil {
 			return "", err
 		}
 		if dfa.initState == s {
-			e, err := graph.CreateEdge(fmt.Sprintf("%v", guid.New()), start, n)
+			_, err := graph.CreateEdge(fmt.Sprintf("%v", guid.New()), start, n)
 			if err != nil {
 				return "", err
 			}
-			e.SetLabel(string("start"))
+			n.SetLabel(fmt.Sprintf("I%v", ii))
+			ii++
 		}
 		if dfa.finStates.Contains(s) {
 			n.SetShape(cgraph.DoubleCircleShape)
-			n.SetLabel(fmt.Sprintf("F%v_%v", fi, toStateRegexID(dfa.GetRegexID(s))))
+			rid := dfa.stIDToRegID.Get(s)
+			n.SetLabel(fmt.Sprintf("F%v_%v", fi, rid))
 			fi++
-		} else if s.GetID() == blackHoleStateID {
-			n.SetLabel("BH")
 		} else {
 			n.SetShape(cgraph.CircleShape)
-			n.SetLabel(fmt.Sprintf("S%v_%v", si, toStateRegexID(dfa.GetRegexID(s))))
+			n.SetLabel(fmt.Sprintf("S%v", si))
 			si++
 		}
 		nodes[s] = n
 	}
 
-	// add edge labels
-	edges := make(map[collection.Pair[State, State]][]string)
-	iter := dfa.delta.Iterator()
-	for iter.HasNext() {
-		st, to := iter.Next()
-		from := st.First
-		symbol := charLabel(string(st.Second))
-		edges[collection.NewPair(from, to)] = append(edges[collection.NewPair(from, to)], symbol)
-	}
-	for edge, labels := range edges {
-		from, to := edge.First, edge.Second
-		e, err := graph.CreateEdge(fmt.Sprintf("%v", guid.New()), nodes[from], nodes[to])
-		if err != nil {
-			return "", err
+	edges := make(map[collection.Pair[StateID, StateID]]string)
+	for from, mp := range dfa.trans.delta {
+		for intv, to := range mp {
+			symbols := fmt.Sprintf("[%s-%s]", string(rune(intv.l)), string(rune(intv.r)))
+			p := collection.NewPair(from, to)
+			if _, ok := edges[p]; ok {
+				edges[p] = edges[p] + "\n" + symbols
+			} else {
+				edges[p] = symbols
+			}
 		}
-		slices.Sort(labels)
-		e.SetLabel(strings.Join(labels, "\n"))
+	}
+	for k, symbols := range edges {
+		from := k.First
+		to := k.Second
+		e, err := graph.CreateEdge(symbols, nodes[from], nodes[to])
+		if err != nil {
+			panic(err)
+		}
+		e.SetLabel(charLabel(symbols))
 	}
 
 	var buf bytes.Buffer
-	g.Render(graph, "dot", &buf)
+	// g.Render(graph, "dot", &buf)
+	// s := buf.String()
 
-	return buf.String(), nil
-}
-
-func toStateRegexID(id RegexID) RegexID {
-	if id == nonFinStateRegexID {
-		return 0
+	// if err := os.WriteFile("ex.dot", []byte(s), 0666); err != nil {
+	// 	log.Fatal(err)
+	// }
+	// graph, err := graphviz.ParseBytes([]byte(s))
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// g := graphviz.New()
+	if err := g.RenderFilename(graph, graphviz.PNG, "ex.png"); err != nil {
+		log.Fatal(err)
 	}
 
-	return id
+	return buf.String(), nil
 }

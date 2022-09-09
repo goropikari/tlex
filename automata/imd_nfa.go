@@ -1,231 +1,236 @@
 package automata
 
 import (
-	"container/list"
+	"errors"
 
 	"github.com/goropikari/tlex/collection"
 	"github.com/goropikari/tlex/math"
-	"github.com/goropikari/tlex/utils/counter"
 )
 
-type ImdNFATransition map[collection.Pair[StateID, byte]]*StateSet
+type ImdEpsilonTransition struct {
+	size int
+	mp   map[StateID]*StateSet
+}
 
-func (trans ImdNFATransition) step(x StateID, b byte) (*StateSet, bool) {
-	nxs, ok := trans[collection.NewPair(x, b)]
-	return nxs, ok
+func NewImdEpsilonTransition(size int, mp map[StateID]*StateSet) ImdEpsilonTransition {
+	return ImdEpsilonTransition{
+		size: size,
+		mp:   mp,
+	}
+}
+
+func (trans *ImdEpsilonTransition) step(from StateID) *StateSet {
+	return trans.mp[from]
+}
+
+type ImdNFATransition struct {
+	mp map[StateID]map[Interval]*StateSet
+}
+
+func NewImdNFATransition(mp map[StateID]map[Interval]*StateSet) ImdNFATransition {
+	return ImdNFATransition{mp: mp}
 }
 
 type ImdNFA struct {
-	cnt         *counter.Counter
-	maxID       int
-	stIDToRegID []RegexID
-	delta       ImdNFATransition
+	size        int
+	intvs       []Interval
+	etrans      ImdEpsilonTransition
+	trans       ImdNFATransition
 	initStates  *StateSet
 	finStates   *StateSet
+	stIDToRegID StateIDToRegexID
 }
 
-func NewImdNFA(maxID int, stIDToRegID []RegexID, delta ImdNFATransition, initStates *StateSet, finStates *StateSet) ImdNFA {
-	return ImdNFA{
-		cnt:         counter.NewCounter(1),
-		maxID:       maxID,
-		stIDToRegID: stIDToRegID,
-		delta:       delta,
-		initStates:  initStates,
-		finStates:   finStates,
+func (nfa *ImdNFA) ToDFA() *DFA {
+	stateSetDict, imdTrans, imdInitState, imdFinStates := nfa.SubsetConstruction()
+
+	states := collection.NewSet[StateID]()
+	initState, ok := stateSetDict.Get(imdInitState)
+	if !ok {
+		panic(errors.New("cannot find initial state"))
 	}
-}
+	states.Insert(initState)
 
-func (nfa ImdNFA) buildEClosures() []*StateSet {
-	ecl := make([]*StateSet, nfa.numst())
-	iter := nfa.iterator()
-	for iter.HasNext() {
-		sid := iter.Next()
-		b := nfa.eclosure(sid)
-		ecl[sid] = b
-	}
-
-	return ecl
-}
-
-func (nfa ImdNFA) numst() int {
-	// +1 means black hole
-	return nfa.maxID + 1
-}
-
-func (nfa ImdNFA) genStateID() StateID {
-	return StateID(nfa.cnt.Generate())
-}
-
-func (nfa ImdNFA) calRegID(ss *StateSet) RegexID {
-	regID := nonFinStateRegexID
-	iter := ss.iterator()
-	for iter.HasNext() {
-		sid := iter.Next()
-		regID = math.Min(regID, nfa.stIDToRegID[sid])
-	}
-
-	return regID
-}
-
-func (nfa ImdNFA) step(sid StateID, b byte) (*StateSet, bool) {
-	nxid, ok := nfa.delta.step(sid, b)
-	return nxid, ok
-}
-
-func (nfa ImdNFA) ToDFA() DFA {
-	states, delta, initState, finStates := nfa.subsetConstruction()
-
-	dfaStates := collection.NewSet[State]()
-	dfaStIDToRegexID := make(map[StateID]RegexID)
-	ssToSt := NewStateSetDict[State]()
-	siter := states.iterator()
-	for siter.HasNext() {
-		ss, newSid := siter.Next()
-		regID := nfa.calRegID(ss)
-		dfaStIDToRegexID[newSid] = regID
-		st := NewState(newSid)
-		dfaStates.Insert(st)
-		ssToSt.Set(ss, st)
-	}
-
-	diter := delta.iterator()
-	dfaDelta := NewDFATransition()
-	for diter.HasNext() {
-		fromSs, mp := diter.Next()
-		for b, toSs := range mp {
-			fromSt, _ := ssToSt.Get(fromSs)
-			toSt, _ := ssToSt.Get(toSs)
-			dfaDelta.Set(fromSt, b, toSt)
+	trans := NewDFATransition()
+	titer := imdTrans.iterator()
+	for titer.HasNext() {
+		fromSs, mp := titer.Next()
+		fsid, ok := stateSetDict.Get(fromSs)
+		if !ok {
+			panic(errors.New("cannot find given state"))
+		}
+		for intv, toss := range mp {
+			toid, ok := stateSetDict.Get(toss)
+			if !ok {
+				panic(errors.New("cannot find given state"))
+			}
+			trans.Set(fsid, intv, toid)
+			states.Insert(toid)
 		}
 	}
 
-	dfaInitState, _ := ssToSt.Get(initState)
-
-	dfaFinStates := collection.NewSet[State]()
-	fiter := finStates.iterator()
+	stIDToRegID := NewStateIDToRegexID()
+	finStates := collection.NewSet[StateID]()
+	fiter := imdFinStates.iterator()
 	for fiter.HasNext() {
 		ss, _ := fiter.Next()
-		st, _ := ssToSt.Get(ss)
-		dfaFinStates.Insert(st)
+		sid, ok := stateSetDict.Get(ss)
+		if !ok {
+			panic(errors.New("cannot find given state"))
+		}
+		finStates.Insert(sid)
+
+		regID := nonFinStateRegexID
+		siter := ss.iterator()
+		for siter.HasNext() {
+			rid := nfa.stIDToRegID.Get(siter.Next())
+			regID = math.Min(regID, rid)
+		}
+		stIDToRegID.Set(sid, regID)
 	}
 
-	return NewDFA(dfaStates, dfaDelta, dfaInitState, dfaFinStates, dfaStIDToRegexID)
+	return &DFA{
+		size:        stateSetDict.Size(),
+		states:      states,
+		intvs:       nfa.intvs,
+		trans:       trans,
+		initState:   initState,
+		finStates:   finStates,
+		stIDToRegID: stIDToRegID,
+	}
 }
 
-func (nfa ImdNFA) subsetConstruction() (states *StateSetDict[StateID], delta *StateSetDict[map[byte]*StateSet], initState *StateSet, finStates *StateSetDict[Nothing]) {
-	ecl := nfa.buildEClosures()
-
-	initState = nfa.initStates.Copy()
-	initIter := initState.iterator()
-	for initIter.HasNext() {
-		sid := initIter.Next()
-		initState = initState.Union(ecl[sid])
+func (nfa *ImdNFA) SubsetConstruction() (states *StateSetDict[StateID], trans *ImdDFATransition, initState *StateSet, finStates *StateSetDict[Nothing]) {
+	n := nfa.size
+	ecls := make([]*StateSet, n)
+	for sid := StateID(0); sid < StateID(n); sid++ {
+		ecls[sid] = nfa.Eclosure(sid)
 	}
 
-	visited := NewStateSetDict[StateID]()
-	finStates = NewStateSetDict[Nothing]()
+	initState = NewStateSet(n)
+	iiter := nfa.initStates.iterator()
+	for iiter.HasNext() {
+		sid := iiter.Next()
+		initState = initState.Union(ecls[sid])
+	}
+
+	visited := NewStateSetDict[StateID]() // key is set of states, value is state id for the key.
+	finStateDict := NewStateSetDict[Nothing]()
 	if initState.Intersection(nfa.finStates).IsAny() {
-		finStates.Set(initState, nothing)
+		finStateDict.Set(initState, nothing)
 	}
-	visited.Set(initState, nfa.genStateID())
 
-	delta = NewStateSetDict[map[byte]*StateSet]()
+	delta := NewImdDFATransition()
+	deq := collection.NewDeque[*StateSet]()
+	deq.PushBack(initState)
 
-	que := list.New() // list of *StateSet
-	que.PushBack(initState)
-	for que.Len() > 0 {
-		top := que.Front()
-		que.Remove(top)
-		from := top.Value.(*StateSet)
+	id := StateID(0)
+	for deq.Size() > 0 {
+		froms := deq.Front()
+		deq.PopFront()
 
-		for _, b := range SupportedChars {
-			tos := NewStateSet(nfa.numst())
-			fromIter := from.iterator()
-			for fromIter.HasNext() {
-				fromStID := fromIter.Next()
-				if nxs, ok := nfa.step(fromStID, b); ok {
-					nxsIter := nxs.iterator()
-					for nxsIter.HasNext() {
-						nxStID := nxsIter.Next()
-						tos = tos.Union(ecl[nxStID])
-					}
+		if visited.Contains(froms) {
+			continue
+		}
+		visited.Set(froms, id)
+		id++
+
+		// nfa.intvs is already disjoined.
+		for _, intv := range nfa.intvs {
+			tos := NewStateSet(n)
+			fiter := froms.iterator()
+			for fiter.HasNext() {
+				fsid := fiter.Next()
+				nxs := nfa.step(fsid, intv)
+				niter := nxs.iterator()
+				for niter.HasNext() {
+					nsid := niter.Next()
+					tos = tos.Union(ecls[nsid])
 				}
 			}
 
 			if tos.IsEmpty() {
 				continue
 			}
+
 			if tos.Intersection(nfa.finStates).IsAny() {
-				finStates.Set(tos, nothing)
+				finStateDict.Set(tos, nothing)
 			}
-			if v, ok := delta.Get(from); ok {
-				v[b] = tos
-				delta.Set(from, v)
-			} else {
-				mp := map[byte]*StateSet{}
-				mp[b] = tos
-				delta.Set(from, mp)
-			}
+
+			delta.Set(froms, intv, tos)
+
 			if visited.Contains(tos) {
 				continue
 			}
-			visited.Set(tos, nfa.genStateID())
-			que.PushBack(tos)
+			deq.PushBack(tos)
 		}
 	}
 
-	return visited, delta, initState, finStates
+	return visited, delta, initState, finStateDict
 }
 
-func (nfa ImdNFA) eclosure(x StateID) *StateSet {
-	que := list.New() // list of StateID
-	que.PushBack(x)
+func (nfa *ImdNFA) step(fsid StateID, intv Interval) *StateSet {
+	ss := NewStateSet(nfa.size)
 
-	visited := NewStateSet(nfa.maxID + 1).Insert((x))
-	closure := visited.Copy()
-	for que.Len() > 0 {
-		front := que.Front()
-		que.Remove(front)
-		top := front.Value.(StateID)
+	for fintv, nxs := range nfa.trans.mp[fsid] {
+		if fintv.Overlap(intv) {
+			ss = ss.Union(nxs)
+		}
+	}
 
-		if nxs, ok := nfa.step(top, epsilon); ok {
-			closure = closure.Union(nxs)
-			nxsIter := nxs.iterator()
-			for nxsIter.HasNext() {
-				nxStID := nxsIter.Next()
-				if !visited.Contains(nxStID) {
-					visited = visited.Insert(nxStID)
-					que.PushBack(nxStID)
-				}
+	return ss
+}
+
+func (nfa *ImdNFA) Eclosure(sid StateID) *StateSet {
+	ss := NewStateSet(nfa.size)
+
+	deq := collection.NewDeque[StateID]()
+	deq.PushBack(sid)
+	for deq.Size() > 0 {
+		fr := deq.Front()
+		deq.PopFront()
+
+		if ss.Contains(fr) {
+			continue
+		}
+		ss.Insert(fr)
+
+		nxs := nfa.etrans.step(fr)
+		iter := nxs.iterator()
+		for iter.HasNext() {
+			nx := iter.Next()
+			if ss.Contains(nx) {
+				continue
 			}
+			deq.PushBack(nx)
 		}
 	}
 
-	return closure
+	return ss
 }
 
-func (nfa ImdNFA) iterator() *allStateIDIterator {
-	return newAllStateIDIterator(nfa.maxID)
+type ImdDFATransition struct {
+	d *StateSetDict[map[Interval]*StateSet]
 }
 
-type allStateIDIterator struct {
-	maxID  int
-	currID int
-}
-
-func newAllStateIDIterator(maxID int) *allStateIDIterator {
-	return &allStateIDIterator{
-		maxID:  maxID,
-		currID: 1, // StateID = 0 is blackhole state
+func NewImdDFATransition() *ImdDFATransition {
+	return &ImdDFATransition{
+		d: NewStateSetDict[map[Interval]*StateSet](),
 	}
 }
 
-func (iter *allStateIDIterator) HasNext() bool {
-	return iter.currID <= iter.maxID
+func (trans *ImdDFATransition) Set(from *StateSet, intv Interval, to *StateSet) {
+	if v, ok := trans.d.Get(from); ok {
+		v[intv] = to
+		trans.d.Set(from, v)
+		return
+	}
+
+	mp := make(map[Interval]*StateSet)
+	mp[intv] = to
+	trans.d.Set(from, mp)
 }
 
-func (iter *allStateIDIterator) Next() StateID {
-	ret := StateID(iter.currID)
-	iter.currID++
-	return ret
+func (trans *ImdDFATransition) iterator() *stateSetDictIterator[map[Interval]*StateSet] {
+	return trans.d.iterator()
 }

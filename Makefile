@@ -1,5 +1,5 @@
 .PHONY: test
-test: build
+test:
 	@go test -shuffle on $(shell go list ./... | grep -v sample)
 
 .PHONY: test-verbose

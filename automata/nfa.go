@@ -2,252 +2,232 @@ package automata
 
 import (
 	"github.com/goropikari/tlex/collection"
-	"github.com/goropikari/tlex/utils/guid"
 )
 
-type NFATransition map[collection.Pair[State, byte]]*collection.Set[State]
+type EpsilonTransition struct {
+	mp map[StateID]*collection.Set[StateID]
+}
 
-func (t NFATransition) Copy() NFATransition {
-	delta := make(NFATransition)
-	for k, v := range t {
-		delta[k] = v.Copy()
+func NewEpsilonTransition(mp map[StateID]*collection.Set[StateID]) EpsilonTransition {
+	return EpsilonTransition{
+		mp: mp,
+	}
+}
+
+func (t EpsilonTransition) set(from, to StateID) {
+	if _, ok := t.mp[from]; ok {
+		t.mp[from].Insert(to)
+	} else {
+		t.mp[from] = collection.NewSet[StateID]().Insert(to)
+	}
+}
+
+func (trans *EpsilonTransition) merge(other EpsilonTransition) {
+	for sid, set := range other.mp {
+		if v, ok := trans.mp[sid]; ok {
+			trans.mp[sid] = v.Union(set)
+		} else {
+			trans.mp[sid] = set
+		}
+	}
+}
+
+func (trans *EpsilonTransition) step(sid StateID) *collection.Set[StateID] {
+	return trans.mp[sid]
+}
+
+type NFATransition struct {
+	mp map[StateID]map[Interval]*collection.Set[StateID]
+}
+
+func NewTransition(mp map[StateID]map[Interval]*collection.Set[StateID]) NFATransition {
+	return NFATransition{mp: mp}
+}
+
+func (trans NFATransition) merge(other NFATransition) {
+	for sid, mp := range other.mp {
+		trans.mp[sid] = mp
+	}
+}
+
+func (trans NFATransition) step(sid StateID, intv Interval) *collection.Set[StateID] {
+	mp, ok := trans.mp[sid]
+	if !ok {
+		return nil
 	}
 
-	return delta
+	return mp[intv]
+}
+
+func (trans NFATransition) intervals() []Interval {
+	intvs := make([]Interval, 0)
+	for _, mp := range trans.mp {
+		for intv := range mp {
+			intvs = append(intvs, intv)
+		}
+	}
+
+	return Disjoin(intvs)
 }
 
 type NFA struct {
-	q             *collection.Set[State]
-	delta         NFATransition
-	initStates    *collection.Set[State]
-	finStates     *collection.Set[State]
-	stIDToRegexID StateIDToRegexID
+	states       *collection.Set[StateID]
+	epsilonTrans EpsilonTransition
+	trans        NFATransition
+	initStates   *collection.Set[StateID]
+	finStates    *collection.Set[StateID]
+	stIDToRegID  StateIDToRegexID
 }
 
-func NewNFA(
-	q *collection.Set[State],
-	delta NFATransition,
-	initStates *collection.Set[State],
-	finStates *collection.Set[State]) NFA {
-	return NFA{
-		q:             q,
-		delta:         delta,
-		initStates:    initStates,
-		finStates:     finStates,
-		stIDToRegexID: make(StateIDToRegexID),
+func NewNFA(states *collection.Set[StateID], etrans EpsilonTransition, trans NFATransition, initStates *collection.Set[StateID], finStates *collection.Set[StateID]) *NFA {
+	return &NFA{
+		states:       states,
+		epsilonTrans: etrans,
+		trans:        trans,
+		initStates:   initStates,
+		finStates:    finStates,
 	}
 }
 
-func NewNFAWithRegexIDMap(q *collection.Set[State], delta NFATransition, initState *collection.Set[State], finState *collection.Set[State], stIDToRegexID map[StateID]RegexID) NFA {
-	return NFA{
-		q:             q,
-		delta:         delta,
-		initStates:    initState,
-		finStates:     finState,
-		stIDToRegexID: stIDToRegexID,
+func (nfa *NFA) Sum(other *NFA) *NFA {
+	nfa.states = nfa.states.Union(other.states)
+	nfa.epsilonTrans.merge(other.epsilonTrans)
+	nfa.trans.merge(other.trans)
+
+	oiter := other.initStates.Iterator()
+	for oiter.HasNext() {
+		sid := oiter.Next()
+		nfa.initStates.Insert(sid)
 	}
+	fiter := other.finStates.Iterator()
+	for fiter.HasNext() {
+		sid := fiter.Next()
+		nfa.finStates.Insert(sid)
+	}
+
+	for sid, rid := range other.stIDToRegID {
+		nfa.stIDToRegID.Set(sid, rid)
+	}
+
+	return nfa
 }
 
-func (nfa NFA) Copy() NFA {
-	return NewNFAWithRegexIDMap(nfa.q.Copy(), nfa.delta.Copy(), nfa.initStates.Copy(), nfa.finStates.Copy(), nfa.stIDToRegexID)
-}
-
-func (nfa NFA) Concat(other NFA) NFA {
-	nfa = nfa.Copy()
-	other = other.Copy()
-
-	qiter := other.q.Iterator()
-	for qiter.HasNext() {
-		st := qiter.Next()
-		nfa.q.Insert(st)
-	}
-
-	for tr, ss := range other.delta {
-		nfa.delta[tr] = ss
-	}
-
+func (nfa *NFA) Concat(other *NFA) *NFA {
+	nfa.states = nfa.states.Union(other.states)
+	nfa.epsilonTrans.merge(other.epsilonTrans)
+	nfa.trans.merge(other.trans)
 	fiter := nfa.finStates.Iterator()
 	for fiter.HasNext() {
 		from := fiter.Next()
 		iiter := other.initStates.Iterator()
 		for iiter.HasNext() {
 			to := iiter.Next()
-			if _, ok := nfa.delta[collection.NewPair(from, epsilon)]; ok {
-				nfa.delta[collection.NewPair(from, epsilon)].Insert(to)
-			} else {
-				nfa.delta[collection.NewPair(from, epsilon)] = collection.NewSet[State]().Insert(to)
-			}
+			nfa.epsilonTrans.set(from, to)
 		}
-
 	}
+	nfa.finStates = other.finStates
 
-	return NewNFA(nfa.q, nfa.delta, nfa.initStates, other.finStates)
+	return nfa
 }
 
-func (nfa NFA) Sum(other NFA) NFA {
-	nfa = nfa.Copy()
-	other = other.Copy()
+func (nfa *NFA) Star() *NFA {
+	sid := NewStateID()
 
-	qiter := other.q.Iterator()
-	for qiter.HasNext() {
-		st := qiter.Next()
-		nfa.q.Insert(st)
-	}
-
-	for tr, ss := range other.delta {
-		nfa.delta[tr] = ss
-	}
-
-	iiter := other.initStates.Iterator()
-	for iiter.HasNext() {
-		st := iiter.Next()
-		nfa.initStates.Insert(st)
-	}
-
-	fiter := other.finStates.Iterator()
-	for fiter.HasNext() {
-		st := fiter.Next()
-		nfa.finStates.Insert(st)
-	}
-
-	return NewNFA(nfa.q, nfa.delta, nfa.initStates, nfa.finStates)
-}
-
-func (nfa NFA) SumWithRegexID(other NFA) NFA {
-	stIDToRegexID := make(StateIDToRegexID)
-	for k, v := range nfa.stIDToRegexID {
-		stIDToRegexID.Set(k, v)
-	}
-	for k, v := range other.stIDToRegexID {
-		stIDToRegexID.Set(k, v)
-	}
-
-	nfa = nfa.Sum(other)
-
-	return NewNFAWithRegexIDMap(nfa.q, nfa.delta, nfa.initStates, nfa.finStates, stIDToRegexID)
-}
-
-func (nfa NFA) Star() NFA {
-	nfa = nfa.Copy()
-
-	startFinState := NewState(StateID(guid.New()))
-	initStates := collection.NewSet[State]().Insert(startFinState)
-
-	nfa.q.Insert(startFinState)
-
-	nfa.delta[collection.NewPair(startFinState, epsilon)] = nfa.initStates
-
+	nfa.states = nfa.states.Insert(sid)
 	fiter := nfa.finStates.Iterator()
 	for fiter.HasNext() {
 		from := fiter.Next()
-		pair := collection.NewPair(from, epsilon)
-		if _, ok := nfa.delta[pair]; ok {
-			nfa.delta[pair].Insert(startFinState)
-		} else {
-			nfa.delta[pair] = initStates
-		}
+		nfa.epsilonTrans.set(from, sid)
 	}
-
-	return NewNFA(nfa.q, nfa.delta, initStates, initStates)
-}
-
-func (nfa NFA) ToImNFA() ImdNFA {
-	nfa = nfa.relabelStateIDs()
-	maxID := nfa.q.Size()
-	numst := maxID + 1 // +1 means black hole state
-	stIDToRegID := make([]RegexID, numst)
-	qiter := nfa.q.Iterator()
-	for qiter.HasNext() {
-		st := qiter.Next()
-		sid := st.GetID()
-		stIDToRegID[sid] = nfa.stIDToRegexID.Get(sid)
-	}
-	delta := make(ImdNFATransition)
-	for pair, tos := range nfa.delta {
-		from := pair.First
-		b := pair.Second
-		delta[collection.NewPair(from.GetID(), b)] = buildStateSet(numst, tos)
-	}
-	initStates := buildStateSet(numst, nfa.initStates)
-	finStates := buildStateSet(numst, nfa.finStates)
-
-	return NewImdNFA(maxID, stIDToRegID, delta, initStates, finStates)
-}
-
-func (nfa NFA) relabelStateIDs() NFA {
-	nfa = nfa.Copy()
-
-	id := StateID(1)
-	oldToNewID := map[StateID]StateID{}
-	newStIDToRegexID := make(StateIDToRegexID)
-	oldStIDToRegexID := nfa.stIDToRegexID
-	newq := collection.NewSet[State]()
-	qiter := nfa.q.Iterator()
-	for qiter.HasNext() {
-		oldst := qiter.Next()
-		newst := NewState(id)
-		newStIDToRegexID.Set(id, oldStIDToRegexID.Get(oldst.GetID()))
-		newq.Insert(newst)
-		oldToNewID[oldst.GetID()] = id
-		id++
-	}
-
-	newdelta := make(NFATransition)
-	for pair, tos := range nfa.delta {
-		oldfrom := pair.First
-		b := pair.Second
-
-		newfrom := NewState(oldToNewID[oldfrom.GetID()])
-		newtos := collection.NewSet[State]()
-		titer := tos.Iterator()
-		for titer.HasNext() {
-			oldto := titer.Next()
-			newto := NewState(oldToNewID[oldto.GetID()])
-			newtos.Insert(newto)
-		}
-		newdelta[collection.NewPair(newfrom, b)] = newtos
-	}
-
-	newInitStates := collection.NewSet[State]()
 	iiter := nfa.initStates.Iterator()
 	for iiter.HasNext() {
-		oldst := iiter.Next()
-		newst := NewState(oldToNewID[oldst.GetID()])
-		newInitStates.Insert(newst)
+		to := iiter.Next()
+		nfa.epsilonTrans.set(sid, to)
 	}
 
-	newFinStates := collection.NewSet[State]()
-	fiter := nfa.finStates.Iterator()
-	for fiter.HasNext() {
-		oldst := fiter.Next()
-		newst := NewState(oldToNewID[oldst.GetID()])
-		newFinStates.Insert(newst)
-	}
+	states := collection.NewSet[StateID]().Insert(sid)
+	nfa.initStates = states
+	nfa.finStates = states
 
-	return NewNFAWithRegexIDMap(newq, newdelta, newInitStates, newFinStates, newStIDToRegexID)
+	return nfa
 }
 
-func buildStateSet(n int, tos *collection.Set[State]) *StateSet {
-	bs := NewStateSet(n)
-	titer := tos.Iterator()
-	for titer.HasNext() {
-		to := titer.Next()
-		bs = bs.Insert(to.GetID())
+func (nfa *NFA) SetRegexID(rid RegexID) *NFA {
+	if nfa.stIDToRegID == nil {
+		nfa.stIDToRegID = make(StateIDToRegexID)
 	}
-	return bs
-}
-
-func (nfa *NFA) SetRegexID(regid RegexID) {
-	stIDToRegexID := make(StateIDToRegexID)
-	iter := nfa.q.Iterator()
+	iter := nfa.finStates.Iterator()
 	for iter.HasNext() {
-		st := iter.Next()
-		if nfa.finStates.Contains(st) {
-			stIDToRegexID.Set(st.GetID(), regid)
-		} else {
-			stIDToRegexID.Set(st.GetID(), nonFinStateRegexID)
+		sid := iter.Next()
+		nfa.stIDToRegID.Set(sid, rid)
+	}
+
+	return nfa
+}
+
+func (nfa *NFA) ToImdNFA() *ImdNFA {
+	n := nfa.states.Size()
+	oldToNew := map[StateID]StateID{}
+	newsid := StateID(0)
+	siter := nfa.states.Iterator()
+	for siter.HasNext() {
+		oldsid := siter.Next()
+		oldToNew[oldsid] = newsid
+		newsid++
+	}
+
+	epsilonMap := map[StateID]*StateSet{}
+	for oldsid, newsid := range oldToNew {
+		tos := nfa.epsilonTrans.step(oldsid)
+		ss := NewStateSet(n)
+		iter := tos.Iterator()
+		for iter.HasNext() {
+			nsid := iter.Next()
+			ss.Insert(oldToNew[nsid])
+		}
+		epsilonMap[newsid] = ss
+	}
+
+	trans := map[StateID]map[Interval]*StateSet{}
+	for sid, mp := range nfa.trans.mp {
+		trans[oldToNew[sid]] = map[Interval]*StateSet{}
+		for intv, nxs := range mp {
+			ss := NewStateSet(n)
+			iter := nxs.Iterator()
+			for iter.HasNext() {
+				nsid := iter.Next()
+				ss.Insert(oldToNew[nsid])
+			}
+			trans[oldToNew[sid]][intv] = ss
 		}
 	}
 
-	nfa.stIDToRegexID = stIDToRegexID
+	initStates := NewStateSet(n)
+	iiter := nfa.initStates.Iterator()
+	for iiter.HasNext() {
+		sid := iiter.Next()
+		initStates.Insert(oldToNew[sid])
+	}
+
+	finStates := NewStateSet(n)
+	fiter := nfa.finStates.Iterator()
+	for fiter.HasNext() {
+		sid := fiter.Next()
+		finStates.Insert(oldToNew[sid])
+	}
+
+	stIDToRegID := StateIDToRegexID{}
+	for sid, rid := range nfa.stIDToRegID {
+		stIDToRegID.Set(oldToNew[sid], rid)
+	}
+
+	return &ImdNFA{
+		size:        n,
+		intvs:       nfa.trans.intervals(),
+		etrans:      NewImdEpsilonTransition(n, epsilonMap),
+		trans:       NewImdNFATransition(trans),
+		initStates:  initStates,
+		finStates:   finStates,
+		stIDToRegID: stIDToRegID,
+	}
 }

@@ -8,7 +8,7 @@ var mu sync.Mutex
 var id int
 
 func init() {
-	id = 0
+	id = -1
 }
 
 func New() int {

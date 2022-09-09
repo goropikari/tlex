@@ -91,6 +91,10 @@ func (s *Set[T]) Slice() []T {
 }
 
 func (s *Set[T]) Iterator() *setIterator[T] {
+	if s == nil {
+		return &setIterator[T]{}
+	}
+
 	return &setIterator[T]{
 		currIdx: 0,
 		length:  len(s.Elems),

@@ -5,6 +5,7 @@ import (
 	stdmath "math"
 
 	"github.com/goropikari/tlex/collection"
+	"github.com/goropikari/tlex/utils/guid"
 )
 
 const asciiSize = 1 << 7
@@ -20,9 +21,12 @@ func init() {
 	}
 }
 
-// var SupportedChars = []byte("!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ \t\n\r")
-
-// const SupportedChars = "abc"
+var unicodeRange = []Interval{
+	NewInterval(0, 127),
+	NewInterval(49152, 57343),
+	NewInterval(14680064, 15728639),
+	NewInterval(4026531840, 4160749567),
+}
 
 type RegexID int
 type StateID int
@@ -31,10 +35,101 @@ type Nothing struct{}
 
 var nothing = Nothing{}
 
+type Interval struct {
+	l int
+	r int
+}
+
+func NewInterval(s, e int) Interval {
+	return Interval{
+		l: s,
+		r: e,
+	}
+}
+
+func (x Interval) Overlap(y Interval) bool {
+	return y.l <= x.r && x.l <= y.r
+}
+
+func (x Interval) Difference(y Interval) []Interval {
+	if !x.Overlap(y) {
+		return []Interval{x}
+	}
+
+	ret := make([]Interval, 0, 2)
+	if x.l < y.l {
+		ret = append(ret, NewInterval(x.l, y.l-1))
+	}
+	if y.r < x.r {
+		ret = append(ret, NewInterval(y.r+1, x.r))
+	}
+
+	return ret
+}
+
+// https://stackoverflow.com/a/25832898
+func Disjoin(intvs []Interval) []Interval {
+	pq := collection.NewPriorityQueue(func(x, y Interval) bool {
+		// ascending order
+		if x.l != y.l {
+			return x.l > y.l
+		}
+		return x.r > y.r
+	})
+
+	for _, v := range intvs {
+		pq.Push(v)
+	}
+
+	ret := make([]Interval, 0, len(intvs))
+	for pq.Size() >= 2 {
+		t1 := pq.Top()
+		pq.Pop()
+		t2 := pq.Top()
+		pq.Pop()
+
+		if t1.Overlap(t2) {
+			if t1.l < t2.l {
+				nx1 := NewInterval(t1.l, t2.l-1)
+				nx2 := NewInterval(t2.l, t1.r)
+				nx3 := NewInterval(t2.l, t2.r)
+				pq.Push(nx1)
+				pq.Push(nx2)
+				pq.Push(nx3)
+			} else { // t1.l == t2.l
+				pq.Push(t1)
+				nx := NewInterval(t1.r+1, t2.r)
+				if t1.r+1 <= t2.r {
+					pq.Push(nx)
+				}
+			}
+		} else {
+			ret = append(ret, t1)
+			pq.Push(t2)
+		}
+	}
+	ret = append(ret, pq.Top())
+
+	return ret
+}
+
+func NewStateID() StateID {
+	return StateID(guid.New())
+}
+
 type StateIDToRegexID map[StateID]RegexID
 
+func NewStateIDToRegexID() StateIDToRegexID {
+	return make(StateIDToRegexID)
+}
+
 func (mp StateIDToRegexID) Get(sid StateID) RegexID {
-	return mp[sid]
+	v, ok := mp[sid]
+	if ok {
+		return v
+	}
+
+	return nonFinStateRegexID
 }
 
 func (mp StateIDToRegexID) Set(sid StateID, rid RegexID) {
@@ -139,6 +234,14 @@ func (iter *stateSetIterator) Next() StateID {
 }
 
 func (ss *StateSet) iterator() *stateSetIterator {
+	if ss == nil {
+		return &stateSetIterator{
+			maxID:  -1,
+			currID: 0,
+			ss:     nil,
+		}
+	}
+
 	return newStateSetIterator(ss)
 }
 
@@ -168,6 +271,10 @@ func (d *StateSetDict[T]) Get(ss *StateSet) (T, bool) {
 
 func (d *StateSetDict[T]) Contains(ss *StateSet) bool {
 	return d.dict.Contains(ss.bs)
+}
+
+func (d *StateSetDict[T]) Size() int {
+	return len(d.shaToSs)
 }
 
 func (d *StateSetDict[T]) iterator() *stateSetDictIterator[T] {
