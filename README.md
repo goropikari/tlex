@@ -10,7 +10,7 @@ tlex supports Unicode.
 
 
 ```bash
-$ go install github.com/goropikari/tlex@v0.3.0
+$ go install github.com/goropikari/tlex@latest
 
 $ tlex -h
 Usage of ./tlex:
