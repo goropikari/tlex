@@ -6,9 +6,9 @@ $ go run main.go
 ```
 hello world
 hello tlex
-
+あいう αβγ
 -----------------
-number of lines: 2
-number of words: 4
-number of chars: 23
+number of lines: 3
+number of words: 6
+number of chars: 31
 ```

@@ -65,7 +65,7 @@ func (nfa NFA) ToDot() (string, error) {
 	edges := make(map[collection.Pair[StateID, StateID]]string)
 	for from, mp := range nfa.trans.mp {
 		for intv, tos := range mp {
-			symbols := fmt.Sprintf("[%c-%c]", intv.l, intv.r)
+			symbols := fmt.Sprintf("[%c-%c]", intv.L, intv.R)
 			titer := tos.Iterator()
 			for titer.HasNext() {
 				to := titer.Next()
@@ -167,7 +167,7 @@ func (nfa ImdNFA) ToDot() (string, error) {
 	edges := make(map[collection.Pair[StateID, StateID]]string)
 	for from, mp := range nfa.trans.mp {
 		for intv, tos := range mp {
-			symbols := fmt.Sprintf("[%c-%c]", intv.l, intv.r)
+			symbols := fmt.Sprintf("[%c-%c]", intv.L, intv.R)
 			titer := tos.iterator()
 			for titer.HasNext() {
 				to := titer.Next()
@@ -222,8 +222,18 @@ func (nfa ImdNFA) ToDot() (string, error) {
 
 func (dfa DFA) ToDot() (string, error) {
 	g := graphviz.New()
-
-	ftBinary, _ := os.ReadFile("./ipaexg00401/ipaexg.ttf")
+	var ftBinary []byte
+	if exists("/usr/share/fonts/opentype/ipaexfont-gothic/ipaexg.ttf") {
+		ftBinary, _ = os.ReadFile("/usr/share/fonts/opentype/ipaexfont-gothic/ipaexg.ttf")
+	} else if exists("/usr/share/fonts/OTF/ipaexm.ttf") {
+		ftBinary, _ = os.ReadFile("/usr/share/fonts/OTF/ipaexm.ttf")
+	} else {
+		var err error
+		ftBinary, err = os.ReadFile("./ipaexg00401/ipaexg.ttf")
+		if err != nil {
+			panic(err)
+		}
+	}
 	ft, _ := truetype.Parse(ftBinary)
 	g.SetFontFace(func(size float64) (font.Face, error) {
 		opt := &truetype.Options{
@@ -286,7 +296,10 @@ func (dfa DFA) ToDot() (string, error) {
 	edges := make(map[collection.Pair[StateID, StateID]]string)
 	for from, mp := range dfa.trans.delta {
 		for intv, to := range mp {
-			symbols := fmt.Sprintf("[%s-%s]", string(rune(intv.l)), string(rune(intv.r)))
+			var lstr, rstr string
+			lstr = fmt.Sprintf("%v", intv.L)
+			rstr = fmt.Sprintf("%v", intv.R)
+			symbols := fmt.Sprintf("[%s-%s]", lstr, rstr)
 			p := collection.NewPair(from, to)
 			if _, ok := edges[p]; ok {
 				edges[p] = edges[p] + "\n" + symbols
@@ -322,4 +335,9 @@ func (dfa DFA) ToDot() (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+func exists(filename string) bool {
+	_, err := os.Stat(filename)
+	return err == nil
 }

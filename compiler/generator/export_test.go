@@ -1,3 +1,3 @@
 package generator
 
-// var LexerNFA = lexerNFA
+var LexerNFA = lexerNFA

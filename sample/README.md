@@ -1,4 +1,4 @@
-Lexical analyzer generator configuration file is following structure.
+The configuration file of tlex is following structure.
 
 ```
 %{
@@ -13,5 +13,3 @@ USER CODE (OPTIONAL)
 ```
 
 `yy` and `YY` prefix variable names are reserved word for generated lexical analyzer file.
-
-

@@ -26,10 +26,10 @@ const (
 
 type Token struct {
 	typ TokenType
-	val byte
+	val rune
 }
 
-func NewToken(typ TokenType, val byte) Token {
+func NewToken(typ TokenType, val rune) Token {
 	return Token{typ: typ, val: val}
 }
 
@@ -37,36 +37,36 @@ func (tok Token) GetType() TokenType {
 	return tok.typ
 }
 
-func (tok Token) GetByte() byte {
+func (tok Token) GetRune() rune {
 	return tok.val
 }
 
 type Lexer struct {
-	regexp []byte
+	regexp []rune
 	tokens []Token
 	pos    int
 	length int
 }
 
 func NewLexer(regexp string) *Lexer {
-	return &Lexer{regexp: []byte(regexp), pos: 0, length: len(regexp)}
+	return &Lexer{regexp: []rune(regexp), pos: 0, length: len(regexp)}
 }
 
-func (lex *Lexer) peek() (byte, error) {
+func (lex *Lexer) peek() (rune, error) {
 	if lex.pos >= len(lex.regexp) {
 		return 0, io.EOF
 	}
 	return lex.regexp[lex.pos], nil
 }
 
-// func (lex *Lexer) next() (byte, error) {
+// func (lex *Lexer) next() (rune, error) {
 // 	if lex.pos+1 >= lex.length {
 // 		return 0, io.EOF
 // 	}
 // 	return lex.regexp[lex.pos+1], nil
 // }
 
-func (lex *Lexer) read() (byte, error) {
+func (lex *Lexer) read() (rune, error) {
 	b, err := lex.peek()
 	if err != nil {
 		return 0, err

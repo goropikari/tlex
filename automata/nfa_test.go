@@ -17,14 +17,8 @@ func TestNFA(t *testing.T) {
 	id1 := automata.NewStateID()
 	nfa1 := automata.NewNFA(
 		collection.NewSet[automata.StateID]().Insert(id0).Insert(id1),
-		automata.NewEpsilonTransition(make(map[automata.StateID]*collection.Set[automata.StateID])),
-		automata.NewTransition(
-			map[automata.StateID]map[automata.Interval]*collection.Set[automata.StateID]{
-				id0: {
-					automata.NewInterval(65, 65): collection.NewSet[automata.StateID]().Insert(id1),
-				},
-			},
-		),
+		automata.NewEpsilonTransition(),
+		automata.NewNFATransition().Set(id0, automata.NewInterval(65, 65), id1),
 		collection.NewSet[automata.StateID]().Insert(id0),
 		collection.NewSet[automata.StateID]().Insert(id1),
 	)
@@ -36,19 +30,10 @@ func TestNFA(t *testing.T) {
 	id5 := automata.NewStateID()
 	nfa2 := automata.NewNFA(
 		collection.NewSet[automata.StateID]().Insert(id2).Insert(id3).Insert(id4).Insert(id5),
-		automata.NewEpsilonTransition(map[automata.StateID]*collection.Set[automata.StateID]{
-			id3: collection.NewSet[automata.StateID]().Insert(id4),
-		}),
-		automata.NewTransition(
-			map[automata.StateID]map[automata.Interval]*collection.Set[automata.StateID]{
-				id2: {
-					automata.NewInterval(65, 65): collection.NewSet[automata.StateID]().Insert(id3),
-				},
-				id4: {
-					automata.NewInterval(66, 66): collection.NewSet[automata.StateID]().Insert(id5),
-				},
-			},
-		),
+		automata.NewEpsilonTransition(),
+		automata.NewNFATransition().
+			Set(id2, automata.NewInterval(65, 65), id3).
+			Set(id4, automata.NewInterval(66, 66), id5),
 		collection.NewSet[automata.StateID]().Insert(id2),
 		collection.NewSet[automata.StateID]().Insert(id5),
 	)
@@ -64,26 +49,11 @@ func TestNFA(t *testing.T) {
 	id13 := automata.NewStateID()
 	nfa3 := automata.NewNFA(
 		collection.NewSet[automata.StateID]().Insert(id6).Insert(id7).Insert(id8).Insert(id9).Insert(id10).Insert(id11).Insert(id12).Insert(id13),
-		automata.NewEpsilonTransition(map[automata.StateID]*collection.Set[automata.StateID]{
-			id6:  collection.NewSet[automata.StateID]().Insert(id7).Insert(id9),
-			id8:  collection.NewSet[automata.StateID]().Insert(id6),
-			id10: collection.NewSet[automata.StateID]().Insert(id11),
-			id11: collection.NewSet[automata.StateID]().Insert(id12),
-			id13: collection.NewSet[automata.StateID]().Insert(id11),
-		}),
-		automata.NewTransition(
-			map[automata.StateID]map[automata.Interval]*collection.Set[automata.StateID]{
-				id7: {
-					automata.NewInterval(65, 65): collection.NewSet[automata.StateID]().Insert(id8),
-				},
-				id9: {
-					automata.NewInterval(66, 66): collection.NewSet[automata.StateID]().Insert(id10),
-				},
-				id12: {
-					automata.NewInterval(66, 66): collection.NewSet[automata.StateID]().Insert(id13),
-				},
-			},
-		),
+		automata.NewEpsilonTransition(),
+		automata.NewNFATransition().
+			Set(id7, automata.NewInterval(65, 65), id8).
+			Set(id9, automata.NewInterval(66, 66), id10).
+			Set(id12, automata.NewInterval(66, 66), id13),
 		collection.NewSet[automata.StateID]().Insert(id6),
 		collection.NewSet[automata.StateID]().Insert(id11),
 	)
@@ -103,14 +73,9 @@ func TestNFA2(t *testing.T) {
 	id1 := automata.NewStateID()
 	nfa1 := automata.NewNFA(
 		collection.NewSet[automata.StateID]().Insert(id0).Insert(id1),
-		automata.NewEpsilonTransition(make(map[automata.StateID]*collection.Set[automata.StateID])),
-		automata.NewTransition(
-			map[automata.StateID]map[automata.Interval]*collection.Set[automata.StateID]{
-				id0: {
-					automata.NewInterval(12354, 12358): collection.NewSet[automata.StateID]().Insert(id1),
-				},
-			},
-		),
+		automata.NewEpsilonTransition(),
+		automata.NewNFATransition().
+			Set(id0, automata.NewInterval(12354, 12358), id1),
 		collection.NewSet[automata.StateID]().Insert(id0),
 		collection.NewSet[automata.StateID]().Insert(id1),
 	)
@@ -122,19 +87,10 @@ func TestNFA2(t *testing.T) {
 	id5 := automata.NewStateID()
 	nfa2 := automata.NewNFA(
 		collection.NewSet[automata.StateID]().Insert(id2).Insert(id3).Insert(id4).Insert(id5),
-		automata.NewEpsilonTransition(map[automata.StateID]*collection.Set[automata.StateID]{
-			id3: collection.NewSet[automata.StateID]().Insert(id4),
-		}),
-		automata.NewTransition(
-			map[automata.StateID]map[automata.Interval]*collection.Set[automata.StateID]{
-				id2: {
-					automata.NewInterval(12354, 12356): collection.NewSet[automata.StateID]().Insert(id3),
-				},
-				id4: {
-					automata.NewInterval(66, 70): collection.NewSet[automata.StateID]().Insert(id5),
-				},
-			},
-		),
+		automata.NewEpsilonTransition().Set(id3, id4),
+		automata.NewNFATransition().
+			Set(id2, automata.NewInterval(12354, 12356), id3).
+			Set(id4, automata.NewInterval(66, 70), id5),
 		collection.NewSet[automata.StateID]().Insert(id2),
 		collection.NewSet[automata.StateID]().Insert(id5),
 	)
@@ -150,32 +106,16 @@ func TestNFA2(t *testing.T) {
 	id13 := automata.NewStateID()
 	nfa3 := automata.NewNFA(
 		collection.NewSet[automata.StateID]().Insert(id6).Insert(id7).Insert(id8).Insert(id9).Insert(id10).Insert(id11).Insert(id12).Insert(id13),
-		automata.NewEpsilonTransition(map[automata.StateID]*collection.Set[automata.StateID]{
-			id6:  collection.NewSet[automata.StateID]().Insert(id7).Insert(id9),
-			id8:  collection.NewSet[automata.StateID]().Insert(id6),
-			id10: collection.NewSet[automata.StateID]().Insert(id11),
-			id11: collection.NewSet[automata.StateID]().Insert(id12),
-			id13: collection.NewSet[automata.StateID]().Insert(id11),
-		}),
-		automata.NewTransition(
-			map[automata.StateID]map[automata.Interval]*collection.Set[automata.StateID]{
-				id7: {
-					automata.NewInterval(66, 68): collection.NewSet[automata.StateID]().Insert(id8),
-				},
-				id9: {
-					automata.NewInterval(66, 66): collection.NewSet[automata.StateID]().Insert(id10),
-				},
-				id12: {
-					automata.NewInterval(66, 66): collection.NewSet[automata.StateID]().Insert(id13),
-				},
-			},
-		),
+		automata.NewEpsilonTransition().Set(id6, id7).Set(id6, id9).Set(id8, id6).Set(id10, id11).Set(id11, id12).Set(id13, id11),
+		automata.NewNFATransition().
+			Set(id7, automata.NewInterval(66, 68), id8).
+			Set(id9, automata.NewInterval(66, 66), id10).
+			Set(id12, automata.NewInterval(66, 66), id13),
 		collection.NewSet[automata.StateID]().Insert(id6),
 		collection.NewSet[automata.StateID]().Insert(id11),
 	)
 	nfa3.SetRegexID(3)
 
-	// a|ab|a*bb*
 	nfa := nfa1.Sum(nfa2).Sum(nfa3).ToImdNFA().ToDFA().LexerMinimize()
 	fmt.Println(nfa.ToDot())
 }

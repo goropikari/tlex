@@ -6,7 +6,7 @@
 
 tlex is lexical analyzer generator such as Lex.
 This is toy implementation for my study, so don't use for production.
-tlex supports only ASCII string, doesn't do unicode.
+tlex supports Unicode.
 
 
 ```bash
@@ -25,7 +25,7 @@ Usage of ./tlex:
 $ tlex -src sample.l -pkg main -o main.go
 $ go run main.go
 
-func foo123bar() int {
+func foo123barあいう () int {
     x := 1 * 10 + 123 - 1000 / 5432
     y := float64(x)
 
@@ -37,6 +37,8 @@ Keyword
 	 "func"
 Identifier
 	 "foo123bar"
+Hiragana
+	 "あいう"
 LParen
 	 "("
 RParen

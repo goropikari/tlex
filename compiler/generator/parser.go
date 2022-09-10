@@ -34,11 +34,11 @@ func (p *Parser) Parse() (def string, rules [][]string, userCode string) {
 }
 
 func (p *Parser) parseRules(ruleStr string) [][]string {
-	r := bytes.NewBufferString("\n" + ruleStr)
+	buf := bytes.NewBufferString("\n" + ruleStr)
 	rules := make([][]string, 0)
 	for {
-		rule := p.readRule(r)
-		blk := p.readBlock(r)
+		rule := p.readRule(buf)
+		blk := p.readBlock(buf)
 		if blk == "" {
 			break
 		}
@@ -48,25 +48,25 @@ func (p *Parser) parseRules(ruleStr string) [][]string {
 	return rules
 }
 
-func (p *Parser) readRule(r io.ByteReader) string {
-	var prev byte
+func (p *Parser) readRule(reader io.RuneReader) string {
+	var prev rune
 	for {
-		b, err := r.ReadByte()
+		r, _, err := reader.ReadRune()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return ""
 			}
 			panic(err)
 		}
-		if prev == '\n' && b == '"' {
+		if prev == '\n' && r == '"' {
 			break
 		}
-		prev = b
+		prev = r
 	}
 
-	bs := make([]byte, 0)
+	rs := make([]rune, 0)
 	for {
-		b, err := r.ReadByte()
+		r, _, err := reader.ReadRune()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
@@ -74,74 +74,74 @@ func (p *Parser) readRule(r io.ByteReader) string {
 			panic(err)
 		}
 
-		switch b {
+		switch r {
 		case '\\':
 			if prev == '\\' {
-				bs = append(bs, b)
+				rs = append(rs, r)
 				prev = 0
 				continue
 			}
-			prev = b
+			prev = r
 			continue
 		case 'n':
 			if prev == '\\' {
-				bs = append(bs, '\n')
+				rs = append(rs, '\n')
 				prev = 0
 				continue
 			}
 		case 'r':
 			if prev == '\\' {
-				bs = append(bs, '\r')
+				rs = append(rs, '\r')
 				prev = 0
 				continue
 			}
 		case 't':
 			if prev == '\\' {
-				bs = append(bs, '\t')
+				rs = append(rs, '\t')
 				prev = 0
 				continue
 			}
 		case '"':
 			if prev == '\\' {
-				prev = b
-				bs = append(bs, b)
+				prev = r
+				rs = append(rs, r)
 				continue
 			}
 
-			return string(bs)
+			return string(rs)
 		}
-		prev = b
-		bs = append(bs, b)
+		prev = r
+		rs = append(rs, r)
 	}
 	return ""
 }
 
-func (p *Parser) readBlock(r io.ByteReader) string {
+func (p *Parser) readBlock(reader io.RuneReader) string {
 	for {
-		b, err := r.ReadByte()
+		r, _, err := reader.ReadRune()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return ""
 			}
 			panic(err)
 		}
-		if b == '{' {
+		if r == '{' {
 			break
 		}
 	}
 
 	nparen := 1
-	bs := []byte{'{'}
+	rs := []rune{'{'}
 	for {
-		b, err := r.ReadByte()
+		r, _, err := reader.ReadRune()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
 			panic(err)
 		}
-		bs = append(bs, b)
-		switch b {
+		rs = append(rs, r)
+		switch r {
 		case '{':
 			// コメント, 文字列中に { が使われていたときはインクリメントしない処理が本来は必要
 			nparen++
@@ -149,7 +149,7 @@ func (p *Parser) readBlock(r io.ByteReader) string {
 			// コメント, 文字列中に { が使われていたときはデクリメントしない処理が本来は必要
 			nparen--
 			if nparen == 0 {
-				return string(bs)
+				return string(rs)
 			}
 		}
 	}

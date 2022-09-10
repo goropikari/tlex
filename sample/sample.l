@@ -18,6 +18,7 @@ const (
     LBracket
     RBracket
     Operator
+    Hiragana
 )
 
 %}
@@ -33,13 +34,14 @@ const (
 "{" { return LBracket, nil }
 "}" { return RBracket, nil }
 "\\+|\\-|\\*|/|:=|==|!=" { return Operator, nil }
+"[ぁ-ゔ]*" { return Hiragana, nil }
 "." {}
 %%
 
 // This part is optional
 func main() {
     program := `
-func foo123bar() int {
+func foo123barあいう () int {
     x := 1 * 10 + 123 - 1000 / 5432
     y := float64(x)
 
@@ -61,6 +63,8 @@ func foo123bar() int {
         switch n {
         case Keyword:
             fmt.Println("Keyword")
+        case Hiragana:
+            fmt.Println("Hiragana")
         case Type:
             fmt.Println("Type")
         case Identifier:

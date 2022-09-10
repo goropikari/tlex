@@ -9,11 +9,11 @@ var nl = 0
 %}
 
 %%
-"[a-zA-Z0-9()]*" {
-    nc += len(YYText)
+"[ \t\r]*" { nc++ }
+"[^ \n]*" {
+    nc += len([]rune(YYText))
     nw++
 }
-"[ \t\r]*" { nc++ }
 "\n" {
     nl++
     nc++
@@ -24,6 +24,7 @@ var nl = 0
 func main() {
     program := `hello world
 hello tlex
+あいう αβγ
 `
     fmt.Print(program)
     fmt.Println("-----------------")

@@ -57,6 +57,16 @@ func (p *ASTPrinter) VisitDotExpr(expr DotExpr) {
 	p.str += s
 }
 
+func (p *ASTPrinter) VisitRangeExpr(expr RangeExpr) {
+	p.str += p.header("RangeExpr")
+	strs := make([]string, 0)
+	strs = append(strs, fmt.Sprintf("%v%v", repTab(p.depth+1), expr.neg))
+	for _, intv := range expr.intvs {
+		strs = append(strs, fmt.Sprintf("%v[%v-%v]", repTab(p.depth+1), intv.l, intv.r))
+	}
+	p.str += strings.Join(strs, "\n") + "\n"
+}
+
 func (p *ASTPrinter) header(name string) string {
 	s := repTab(p.depth)
 	s += name + "\n"

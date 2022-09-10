@@ -26,172 +26,80 @@ var (
 var yyStateIDToRegexID = []yyRegexID{
 	0, // state 0 は BH state
 	1,
+	2,
+	1,
 	1,
 	3,
-	2,
 }
 
 var yyFinStates = map[yyStateID]struct{}{
+	0: {},
 	1: {},
 	2: {},
 	3: {},
 	4: {},
+	5: {},
 }
 
-var yyTransitionTable = map[yyStateID]map[byte]yyStateID{
+type yyinterval struct {
+	l int
+	r int
+}
+
+func (x yyinterval) overlap(y yyinterval) bool {
+	return y.l <= x.r && x.l <= y.r
+}
+
+var yyTransitionTable = map[yyStateID]map[yyinterval]yyStateID{
 	1: {
-		9:   4,
-		10:  3,
-		13:  4,
-		32:  4,
-		40:  2,
-		41:  2,
-		48:  2,
-		49:  2,
-		50:  2,
-		51:  2,
-		52:  2,
-		53:  2,
-		54:  2,
-		55:  2,
-		56:  2,
-		57:  2,
-		65:  2,
-		66:  2,
-		67:  2,
-		68:  2,
-		69:  2,
-		70:  2,
-		71:  2,
-		72:  2,
-		73:  2,
-		74:  2,
-		75:  2,
-		76:  2,
-		77:  2,
-		78:  2,
-		79:  2,
-		80:  2,
-		81:  2,
-		82:  2,
-		83:  2,
-		84:  2,
-		85:  2,
-		86:  2,
-		87:  2,
-		88:  2,
-		89:  2,
-		90:  2,
-		97:  2,
-		98:  2,
-		99:  2,
-		100: 2,
-		101: 2,
-		102: 2,
-		103: 2,
-		104: 2,
-		105: 2,
-		106: 2,
-		107: 2,
-		108: 2,
-		109: 2,
-		110: 2,
-		111: 2,
-		112: 2,
-		113: 2,
-		114: 2,
-		115: 2,
-		116: 2,
-		117: 2,
-		118: 2,
-		119: 2,
-		120: 2,
-		121: 2,
-		122: 2,
+		yyinterval{l: 9, r: 9}:        3,
+		yyinterval{l: 10, r: 10}:      5,
+		yyinterval{l: 11, r: 12}:      2,
+		yyinterval{l: 13, r: 13}:      3,
+		yyinterval{l: 14, r: 31}:      2,
+		yyinterval{l: 32, r: 32}:      4,
+		yyinterval{l: 33, r: 1114111}: 2,
+		yyinterval{l: 0, r: 8}:        2,
 	},
 	2: {
-		40:  2,
-		41:  2,
-		48:  2,
-		49:  2,
-		50:  2,
-		51:  2,
-		52:  2,
-		53:  2,
-		54:  2,
-		55:  2,
-		56:  2,
-		57:  2,
-		65:  2,
-		66:  2,
-		67:  2,
-		68:  2,
-		69:  2,
-		70:  2,
-		71:  2,
-		72:  2,
-		73:  2,
-		74:  2,
-		75:  2,
-		76:  2,
-		77:  2,
-		78:  2,
-		79:  2,
-		80:  2,
-		81:  2,
-		82:  2,
-		83:  2,
-		84:  2,
-		85:  2,
-		86:  2,
-		87:  2,
-		88:  2,
-		89:  2,
-		90:  2,
-		97:  2,
-		98:  2,
-		99:  2,
-		100: 2,
-		101: 2,
-		102: 2,
-		103: 2,
-		104: 2,
-		105: 2,
-		106: 2,
-		107: 2,
-		108: 2,
-		109: 2,
-		110: 2,
-		111: 2,
-		112: 2,
-		113: 2,
-		114: 2,
-		115: 2,
-		116: 2,
-		117: 2,
-		118: 2,
-		119: 2,
-		120: 2,
-		121: 2,
-		122: 2,
+		yyinterval{l: 33, r: 1114111}: 2,
+		yyinterval{l: 0, r: 8}:        2,
+		yyinterval{l: 9, r: 9}:        2,
+		yyinterval{l: 11, r: 12}:      2,
+		yyinterval{l: 13, r: 13}:      2,
+		yyinterval{l: 14, r: 31}:      2,
+	},
+	3: {
+		yyinterval{l: 9, r: 9}:        3,
+		yyinterval{l: 11, r: 12}:      2,
+		yyinterval{l: 13, r: 13}:      3,
+		yyinterval{l: 14, r: 31}:      2,
+		yyinterval{l: 32, r: 32}:      4,
+		yyinterval{l: 33, r: 1114111}: 2,
+		yyinterval{l: 0, r: 8}:        2,
 	},
 	4: {
-		9:  4,
-		13: 4,
-		32: 4,
+		yyinterval{l: 32, r: 32}: 4,
+		yyinterval{l: 9, r: 9}:   4,
+		yyinterval{l: 13, r: 13}: 4,
 	},
 }
 
-func yyNextStep(id yyStateID, b byte) yyStateID {
+func yyNextStep(id yyStateID, r rune) yyStateID {
 	if mp, ok := yyTransitionTable[id]; ok {
-		return mp[b]
+		t := yyinterval{l: int(r), r: int(r)}
+		for intv, sid := range mp {
+			if intv.overlap(t) {
+				return sid
+			}
+		}
 	}
 
 	return 0
 }
 
 type yyLexer struct {
-	rs          io.ReadSeeker
+	rs          RuneReadSeeker
 	beginPos    int
 	finPos      int
 	currPos     int
@@ -200,7 +108,12 @@ type yyLexer struct {
 	YYText      string
 }
 
-func New(rs io.ReadSeeker) *yyLexer {
+type RuneReadSeeker interface {
+	io.ReadSeeker
+	io.RuneScanner
+}
+
+func New(rs RuneReadSeeker) *yyLexer {
 	return &yyLexer{
 		rs:          rs,
 		beginPos:    0,
@@ -211,23 +124,22 @@ func New(rs io.ReadSeeker) *yyLexer {
 	}
 }
 
-func (yylex *yyLexer) currByte() (byte, error) {
-	b := make([]byte, 1)
-	if _, err := yylex.rs.Read(b); err != nil {
-		return 0, err
+func (yylex *yyLexer) currRune() (rune, int, error) {
+	ru, size, err := yylex.rs.ReadRune()
+	if err != nil {
+		return 0, 0, err
 	}
-	if _, err := yylex.rs.Seek(int64(yylex.currPos), io.SeekStart); err != nil {
-		return 0, err
+	if err := yylex.rs.UnreadRune(); err != nil {
+		return 0, 0, err
 	}
-
-	return b[0], nil
+	return ru, size, nil
 }
 
 func (yylex *yyLexer) Next() (int, error) {
 	yyEofCnt := 0
 yystart:
 	for {
-		yyb, err := yylex.currByte()
+		yyr, yysize, err := yylex.currRune()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				yyEofCnt++
@@ -238,9 +150,16 @@ yystart:
 			return 0, err
 		}
 	finProcess:
-		yyNxStID := yyNextStep(yylex.currStateID, yyb)
+		yyNxStID := yyNextStep(yylex.currStateID, yyr)
 		if yyNxStID == 0 {
-			yydata := make([]byte, yylex.finPos+1-yylex.beginPos)
+			if _, err := yylex.rs.Seek(int64(yylex.finPos), io.SeekStart); err != nil {
+				return 0, err
+			}
+			_, lastSize, err := yylex.currRune()
+			if err != nil {
+				return 0, err
+			}
+			yydata := make([]byte, yylex.finPos+lastSize-yylex.beginPos)
 			if _, err := yylex.rs.Seek(int64(yylex.beginPos), io.SeekStart); err != nil {
 				return 0, err
 			}
@@ -249,7 +168,7 @@ yystart:
 			}
 			yylex.YYText = string(yydata)
 			YYText = yylex.YYText
-			yyNewCurrPos := yylex.finPos + 1
+			yyNewCurrPos := yylex.finPos + lastSize
 			yylex.beginPos = yyNewCurrPos
 			yylex.finPos = yyNewCurrPos
 			yylex.currPos = yyNewCurrPos
@@ -262,13 +181,13 @@ yystart:
 				return 0, ErrYYScan
 			case 1:
 				{
-					nc += len(YYText)
-					nw++
+					nc++
 				}
 				goto yystart
 			case 2:
 				{
-					nc++
+					nc += len([]rune(YYText))
+					nw++
 				}
 				goto yystart
 			case 3:
@@ -287,7 +206,7 @@ yystart:
 			yylex.finRegexID = yyStateIDToRegexID[yyNxStID]
 		}
 		yylex.currStateID = yyNxStID
-		yylex.currPos++
+		yylex.currPos += yysize
 		if _, err := yylex.rs.Seek(int64(yylex.currPos), io.SeekStart); err != nil {
 			return 0, err
 		}
@@ -300,6 +219,7 @@ yystart:
 func main() {
 	program := `hello world
 hello tlex
+あいう αβγ
 `
 	fmt.Print(program)
 	fmt.Println("-----------------")

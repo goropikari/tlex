@@ -8,18 +8,20 @@ type EpsilonTransition struct {
 	mp map[StateID]*collection.Set[StateID]
 }
 
-func NewEpsilonTransition(mp map[StateID]*collection.Set[StateID]) EpsilonTransition {
+func NewEpsilonTransition() EpsilonTransition {
 	return EpsilonTransition{
-		mp: mp,
+		mp: make(map[StateID]*collection.Set[StateID]),
 	}
 }
 
-func (t EpsilonTransition) set(from, to StateID) {
+func (t EpsilonTransition) Set(from, to StateID) EpsilonTransition {
 	if _, ok := t.mp[from]; ok {
 		t.mp[from].Insert(to)
 	} else {
 		t.mp[from] = collection.NewSet[StateID]().Insert(to)
 	}
+
+	return t
 }
 
 func (trans *EpsilonTransition) merge(other EpsilonTransition) {
@@ -40,8 +42,24 @@ type NFATransition struct {
 	mp map[StateID]map[Interval]*collection.Set[StateID]
 }
 
-func NewTransition(mp map[StateID]map[Interval]*collection.Set[StateID]) NFATransition {
-	return NFATransition{mp: mp}
+func NewNFATransition() NFATransition {
+	return NFATransition{
+		mp: make(map[StateID]map[Interval]*collection.Set[StateID]),
+	}
+}
+
+func (trans NFATransition) Set(from StateID, intv Interval, to StateID) NFATransition {
+	_, ok := trans.mp[from]
+	if !ok {
+		trans.mp[from] = make(map[Interval]*collection.Set[StateID])
+	}
+	_, ok = trans.mp[from][intv]
+	if !ok {
+		trans.mp[from][intv] = collection.NewSet[StateID]()
+	}
+	trans.mp[from][intv].Insert(to)
+
+	return trans
 }
 
 func (trans NFATransition) merge(other NFATransition) {
@@ -122,7 +140,7 @@ func (nfa *NFA) Concat(other *NFA) *NFA {
 		iiter := other.initStates.Iterator()
 		for iiter.HasNext() {
 			to := iiter.Next()
-			nfa.epsilonTrans.set(from, to)
+			nfa.epsilonTrans.Set(from, to)
 		}
 	}
 	nfa.finStates = other.finStates
@@ -137,12 +155,12 @@ func (nfa *NFA) Star() *NFA {
 	fiter := nfa.finStates.Iterator()
 	for fiter.HasNext() {
 		from := fiter.Next()
-		nfa.epsilonTrans.set(from, sid)
+		nfa.epsilonTrans.Set(from, sid)
 	}
 	iiter := nfa.initStates.Iterator()
 	for iiter.HasNext() {
 		to := iiter.Next()
-		nfa.epsilonTrans.set(sid, to)
+		nfa.epsilonTrans.Set(sid, to)
 	}
 
 	states := collection.NewSet[StateID]().Insert(sid)

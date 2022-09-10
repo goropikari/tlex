@@ -27,6 +27,7 @@ type NodeVisitor interface {
 	VisitConcatExpr(ConcatExpr)
 	VisitStarExpr(StarExpr)
 	VisitSymbolExpr(SymbolExpr)
+	VisitRangeExpr(RangeExpr)
 	VisitDotExpr(DotExpr)
 }
 
@@ -86,11 +87,25 @@ func (p *Parser) sum() (RegexExpr, error) {
 	return lhs, nil
 }
 
+type interval struct {
+	l int
+	r int
+}
+
+func newInterval(l, r int) interval {
+	return interval{l: l, r: r}
+}
+
+func newIntervalRune(r rune) interval {
+	return newInterval(int(r), int(r))
+}
+
 func (p *Parser) set() (RegexExpr, error) {
 	neg := false
-	bs := make([]byte, 0)
-	var prev byte
+	var prev rune
+	deq := collection.NewDeque[interval]()
 
+	isFirst := true
 	for {
 		tok, err := p.peek()
 		if err != nil {
@@ -99,58 +114,55 @@ func (p *Parser) set() (RegexExpr, error) {
 		switch tok.GetType() {
 		case RSqBracketTokenType:
 			if prev == '-' {
-				return nil, ErrParse
+				deq.PushBack(newIntervalRune('-'))
 			}
 			goto Out
 		case NegationTokenType:
-			prev = tok.GetByte()
-			neg = true
+			ru := tok.GetRune()
+			if isFirst {
+				neg = true
+			} else {
+				deq.PushBack(newIntervalRune(ru))
+			}
+			prev = ru
 		case MinusTokenType:
-			prev = tok.GetByte()
-		default:
-			b := tok.GetByte()
 			if prev == '-' {
-				from := bs[len(bs)-1]
-				if from > b {
+				return nil, ErrParse
+			}
+			prev = tok.GetRune()
+		default:
+			ru := tok.GetRune()
+			if prev == '-' {
+				if deq.Size() == 0 {
 					return nil, ErrParse
 				}
-				for t := from + 1; t < b; t++ {
-					bs = append(bs, t)
+				intv := deq.Back()
+				deq.PopBack()
+				if intv.l > int(ru) {
+					return nil, ErrParse
 				}
+				intv.r = int(ru)
+				deq.PushBack(intv)
+			} else {
+				deq.PushBack(newIntervalRune(ru))
 			}
-			bs = append(bs, b)
-			prev = b
+			prev = ru
 		}
-		_, _ = p.read()
+		if _, err := p.read(); err != nil {
+			return nil, err
+		}
+		isFirst = false
 	}
+
 Out:
 	var expr RegexExpr
-	if !neg {
-		expr = NewSymbolExpr(bs[0])
-		if len(bs) == 1 {
-			return expr, nil
-		}
-
-		for i := 1; i < len(bs); i++ {
-			rhs := NewSymbolExpr(bs[i])
-			expr = NewSumExpr(expr, rhs)
-		}
-		return expr, nil
+	intvs := make([]interval, 0)
+	for deq.Size() > 0 {
+		intv := deq.Front()
+		deq.PopFront()
+		intvs = append(intvs, intv)
 	}
-
-	ruSet := collection.NewSet[byte]()
-	for _, b := range bs {
-		ruSet.Insert(b)
-	}
-	for _, b := range automata.SupportedChars {
-		if !ruSet.Contains(b) {
-			if expr == nil {
-				expr = NewSymbolExpr(b)
-			} else {
-				expr = NewSumExpr(expr, NewSymbolExpr(b))
-			}
-		}
-	}
+	expr = NewRangeExpr(neg, intvs)
 
 	return expr, nil
 }
@@ -208,7 +220,7 @@ func (p *Parser) primary() (RegexExpr, error) {
 
 	switch s.GetType() {
 	case SymbolTokenType:
-		return NewSymbolExpr(s.GetByte()), nil
+		return NewSymbolExpr(s.GetRune()), nil
 	case DotTokenType:
 		return NewDotExpr(), nil
 	case LParenTokenType:
@@ -279,15 +291,65 @@ func (expr StarExpr) Accept(v NodeVisitor) {
 }
 
 type SymbolExpr struct {
-	sym byte
+	sym rune
 }
 
-func NewSymbolExpr(sym byte) SymbolExpr {
+func NewSymbolExpr(sym rune) SymbolExpr {
 	return SymbolExpr{sym: sym}
 }
 
 func (expr SymbolExpr) Accept(v NodeVisitor) {
 	v.VisitSymbolExpr(expr)
+}
+
+type RangeExpr struct {
+	neg   bool
+	intvs []interval
+}
+
+func NewRangeExpr(neg bool, intvs []interval) RangeExpr {
+	return RangeExpr{neg: neg, intvs: intvs}
+}
+
+func (expr RangeExpr) Accept(v NodeVisitor) {
+	v.VisitRangeExpr(expr)
+}
+
+func (expr RangeExpr) intervals() []automata.Interval {
+	tmpIntvs := make([]automata.Interval, 0)
+	for _, intv := range expr.intvs {
+		tmpIntvs = append(tmpIntvs, automata.NewInterval(intv.l, intv.r))
+	}
+	if !expr.neg {
+		return tmpIntvs
+	}
+
+	deq := collection.NewDeque[automata.Interval]()
+	for _, intv := range automata.UnicodeRange {
+		deq.PushBack(intv)
+	}
+
+	intvs := make([]automata.Interval, 0)
+	for deq.Size() > 0 {
+		fr := deq.Front()
+		deq.PopFront()
+		ok := true
+		for _, intv := range tmpIntvs {
+			if fr.Overlap(intv) {
+				ok = false
+				ls := fr.Difference(intv)
+				for _, t := range ls {
+					deq.PushBack(t)
+				}
+				break
+			}
+		}
+		if ok {
+			intvs = append(intvs, fr)
+		}
+	}
+
+	return intvs
 }
 
 type DotExpr struct {

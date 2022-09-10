@@ -1,71 +1,102 @@
 package regexp
 
-// type CodeGenerator struct {
-// 	nfa automata.NFA
-// }
+import (
+	"unicode"
 
-// func NewCodeGenerator() *CodeGenerator {
-// 	return &CodeGenerator{}
-// }
+	"github.com/goropikari/tlex/automata"
+	"github.com/goropikari/tlex/collection"
+)
 
-// func (gen *CodeGenerator) GetNFA() automata.NFA {
-// 	return gen.nfa
-// }
+type CodeGenerator struct {
+	nfa *automata.NFA
+}
 
-// func (gen *CodeGenerator) VisitSumExpr(expr SumExpr) {
-// 	expr.lhs.Accept(gen)
-// 	lhs := gen.nfa
-// 	expr.rhs.Accept(gen)
-// 	rhs := gen.nfa
+func NewCodeGenerator() *CodeGenerator {
+	return &CodeGenerator{}
+}
 
-// 	gen.nfa = lhs.Sum(rhs)
-// }
+func (gen *CodeGenerator) GetNFA() *automata.NFA {
+	return gen.nfa
+}
 
-// func (gen *CodeGenerator) VisitConcatExpr(expr ConcatExpr) {
-// 	expr.lhs.Accept(gen)
-// 	lhs := gen.nfa
-// 	expr.rhs.Accept(gen)
-// 	rhs := gen.nfa
+func (gen *CodeGenerator) VisitSumExpr(expr SumExpr) {
+	expr.lhs.Accept(gen)
+	lhs := gen.nfa
+	expr.rhs.Accept(gen)
+	rhs := gen.nfa
 
-// 	gen.nfa = lhs.Concat(rhs)
-// }
+	gen.nfa = lhs.Sum(rhs)
+}
 
-// func (gen *CodeGenerator) VisitStarExpr(expr StarExpr) {
-// 	expr.expr.Accept(gen)
-// 	gen.nfa = gen.nfa.Star()
-// }
+func (gen *CodeGenerator) VisitConcatExpr(expr ConcatExpr) {
+	expr.lhs.Accept(gen)
+	lhs := gen.nfa
+	expr.rhs.Accept(gen)
+	rhs := gen.nfa
 
-// func (gen *CodeGenerator) VisitSymbolExpr(expr SymbolExpr) {
-// 	from := automata.NewState(automata.StateID(guid.New()))
-// 	to := automata.NewState(automata.StateID(guid.New()))
+	gen.nfa = lhs.Concat(rhs)
+}
 
-// 	gen.nfa = automata.NewNFA(
-// 		collection.NewSet[automata.State]().Insert(from).Insert(to),
-// 		automata.NFATransition{
-// 			collection.NewPair(from, expr.sym): collection.NewSet[automata.State]().Insert(to),
-// 		},
-// 		collection.NewSet[automata.State]().Insert(from),
-// 		collection.NewSet[automata.State]().Insert(to),
-// 	)
-// }
+func (gen *CodeGenerator) VisitStarExpr(expr StarExpr) {
+	expr.expr.Accept(gen)
+	gen.nfa = gen.nfa.Star()
+}
 
-// func (gen *CodeGenerator) VisitDotExpr(expr DotExpr) {
-// 	from := automata.NewState(automata.StateID(guid.New()))
-// 	trans := make(automata.NFATransition)
-// 	states := collection.NewSet[automata.State]().Insert(from)
-// 	finStates := collection.NewSet[automata.State]()
+func (gen *CodeGenerator) VisitSymbolExpr(expr SymbolExpr) {
+	from := automata.NewStateID()
+	to := automata.NewStateID()
+	gen.nfa = automata.NewNFA(
+		collection.NewSet[automata.StateID]().Insert(from).Insert(to),
+		automata.NewEpsilonTransition(),
+		automata.NewNFATransition().Set(from, automata.NewInterval(int(expr.sym), int(expr.sym)), to),
+		collection.NewSet[automata.StateID]().Insert(from),
+		collection.NewSet[automata.StateID]().Insert(to),
+	)
+}
 
-// 	for _, b := range automata.SupportedChars {
-// 		to := automata.NewState(automata.StateID(guid.New()))
-// 		states = states.Insert(to)
-// 		finStates = finStates.Insert(to)
-// 		trans[collection.NewPair(from, b)] = collection.NewSet[automata.State]().Insert(to)
-// 	}
+func (gen *CodeGenerator) VisitRangeExpr(expr RangeExpr) {
+	from := automata.NewStateID()
+	to := automata.NewStateID()
+	trans := automata.NewNFATransition()
 
-// 	gen.nfa = automata.NewNFA(
-// 		states,
-// 		trans,
-// 		collection.NewSet[automata.State]().Insert(from),
-// 		finStates,
-// 	)
-// }
+	intvs := expr.intervals()
+	for _, intv := range intvs {
+		trans.Set(from, intv, to)
+	}
+
+	gen.nfa = automata.NewNFA(
+		collection.NewSet[automata.StateID]().Insert(from).Insert(to),
+		automata.NewEpsilonTransition(),
+		trans,
+		collection.NewSet[automata.StateID]().Insert(from),
+		collection.NewSet[automata.StateID]().Insert(to),
+	)
+}
+
+var dotRanges = []automata.Interval{
+	automata.NewInterval(0, 9),
+	automata.NewInterval(11, int(unicode.MaxRune)),
+}
+
+func (gen *CodeGenerator) VisitDotExpr(expr DotExpr) {
+	from := automata.NewStateID()
+	to := automata.NewStateID()
+	initStates := collection.NewSet[automata.StateID]().Insert(from)
+	trans := automata.NewNFATransition()
+	states := collection.NewSet[automata.StateID]().Insert(from).Insert(to)
+	finStates := collection.NewSet[automata.StateID]()
+
+	for _, intv := range dotRanges {
+		states = states.Insert(to)
+		finStates = finStates.Insert(to)
+		trans.Set(from, intv, to)
+	}
+
+	gen.nfa = automata.NewNFA(
+		states,
+		automata.NewEpsilonTransition(),
+		trans,
+		initStates,
+		finStates,
+	)
+}

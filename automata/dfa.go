@@ -12,6 +12,11 @@ func NewDFATransition() *DFATransition {
 	}
 }
 
+func (trans *DFATransition) GetMap(sid StateID) (map[Interval]StateID, bool) {
+	mp, ok := trans.delta[sid]
+	return mp, ok
+}
+
 func (trans *DFATransition) Set(from StateID, intv Interval, to StateID) {
 	_, ok := trans.delta[from]
 	if !ok {
@@ -19,6 +24,17 @@ func (trans *DFATransition) Set(from StateID, intv Interval, to StateID) {
 	}
 
 	trans.delta[from][intv] = to
+}
+
+func (trans *DFATransition) step(from StateID, intv Interval) (StateID, bool) {
+	if mp, ok := trans.delta[from]; ok {
+		for t, to := range mp {
+			if t.Overlap(intv) {
+				return to, true
+			}
+		}
+	}
+	return 0, false
 }
 
 type DFA struct {
@@ -31,12 +47,50 @@ type DFA struct {
 	stIDToRegID StateIDToRegexID
 }
 
+func (dfa *DFA) GetInitState() StateID {
+	return dfa.initState
+}
+
+func (dfa *DFA) GetFinStates() *collection.Set[StateID] {
+	return dfa.finStates
+}
+
+func (dfa *DFA) GetStates() []StateID {
+	return dfa.states.Slice()
+}
+
+func (dfa *DFA) GetRegexID(sid StateID) RegexID {
+	return dfa.stIDToRegID.Get(sid)
+}
+
+func (dfa *DFA) GetTransitionTable() *DFATransition {
+	return dfa.trans
+}
+
+func (dfa *DFA) Accept(s string) (RegexID, bool) {
+	rs := []rune(s)
+	currSid := dfa.initState
+	for _, r := range rs {
+		intv := NewInterval(int(r), int(r))
+		nx, ok := dfa.trans.step(currSid, intv)
+		if !ok {
+			return 0, false
+		}
+		currSid = nx
+	}
+	return dfa.stIDToRegID.Get(currSid), dfa.finStates.Contains(currSid)
+}
+
 // ここで入る intv は dfa.intvs に入っていることを前提としている
 func (dfa *DFA) stepIntv(sid StateID, intv Interval) (stateID StateID, nonDeadState bool) {
 	retID, ok := dfa.trans.delta[sid][intv]
 	return retID, ok
 }
 
+// state minimization for lexical analyzer
+// Compilers: Principles, Techniques, and Tools, 2ed ed.,  ISBN 9780321486813 (Dragon book)
+// p.181 Algorithm 3.39
+// p.184 3.9.7 State Minimization in Lexical Analyzers
 func (dfa *DFA) grouping() [][]StateID {
 	regIDMap := map[RegexID][]StateID{}
 	siter := dfa.states.Iterator()

@@ -95,7 +95,7 @@ func TestParser_Lexer_Parse(t *testing.T) {
 	}{
 		{
 			name:  "lexer & parser test",
-			given: "a(b|c*)de|fg*hi|.*",
+			given: "a(b|c*)de|fg*hi|.*|[^あ-おa-zαβ]",
 			expected: `
 SumExpr
 	ConcatExpr
@@ -126,9 +126,16 @@ SumExpr
 						h
 					SymbolExpr
 						i
-		StarExpr
-			DotExpr
-				.
+		SumExpr
+			StarExpr
+				DotExpr
+					.
+			RangeExpr
+				true
+				[12354-12362]
+				[97-122]
+				[945-945]
+				[946-946]
 `,
 		},
 		{

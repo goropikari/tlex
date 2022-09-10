@@ -9,7 +9,7 @@ import (
 
 func TestLexer(t *testing.T) {
 	program := `
-func foo000() int {
+func foo000あいう() int {
     x := 1 * 10 + 123 - 1000 / 5432
 
     return x
@@ -26,6 +26,7 @@ func foo000() int {
 	}{
 		{Keyword, "func"},
 		{Identifier, "foo000"},
+		{Hiragana, "あいう"},
 		{LParen, "("},
 		{RParen, ")"},
 		{Type, "int"},
@@ -58,19 +59,19 @@ func foo000() int {
 	}
 
 	if len(expected) != len(ns) {
-		t.Error("type is different")
+		t.Error("the number of recognize token is different from expected length.")
 	}
 	for i, v := range expected {
 		if v.typ != ns[i] {
-			t.Error("type is different")
+			t.Errorf("type is different: expected %v but %v", v.typ, ns[i])
 		}
-	}
-	if len(expected) != len(strs) {
-		t.Error("token is different")
-	}
-	for i, v := range expected {
 		if v.text != strs[i] {
-			t.Error("token is different")
+			t.Errorf("token is different: expected %v but %v", v.text, strs[i])
 		}
 	}
+	// for i, v := range expected {
+	// 	if v.text != strs[i] {
+	// 		t.Errorf("token is different: expected %v but %v", v.text, strs[i])
+	// 	}
+	// }
 }

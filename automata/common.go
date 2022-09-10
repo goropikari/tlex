@@ -3,6 +3,7 @@ package automata
 import (
 	"crypto/sha256"
 	stdmath "math"
+	"unicode"
 
 	"github.com/goropikari/tlex/collection"
 	"github.com/goropikari/tlex/utils/guid"
@@ -21,11 +22,8 @@ func init() {
 	}
 }
 
-var unicodeRange = []Interval{
-	NewInterval(0, 127),
-	NewInterval(49152, 57343),
-	NewInterval(14680064, 15728639),
-	NewInterval(4026531840, 4160749567),
+var UnicodeRange = []Interval{
+	NewInterval(0, int(unicode.MaxRune)),
 }
 
 type RegexID int
@@ -36,19 +34,19 @@ type Nothing struct{}
 var nothing = Nothing{}
 
 type Interval struct {
-	l int
-	r int
+	L int
+	R int
 }
 
 func NewInterval(s, e int) Interval {
 	return Interval{
-		l: s,
-		r: e,
+		L: s,
+		R: e,
 	}
 }
 
 func (x Interval) Overlap(y Interval) bool {
-	return y.l <= x.r && x.l <= y.r
+	return y.L <= x.R && x.L <= y.R
 }
 
 func (x Interval) Difference(y Interval) []Interval {
@@ -57,11 +55,11 @@ func (x Interval) Difference(y Interval) []Interval {
 	}
 
 	ret := make([]Interval, 0, 2)
-	if x.l < y.l {
-		ret = append(ret, NewInterval(x.l, y.l-1))
+	if x.L < y.L {
+		ret = append(ret, NewInterval(x.L, y.L-1))
 	}
-	if y.r < x.r {
-		ret = append(ret, NewInterval(y.r+1, x.r))
+	if x.R > y.R {
+		ret = append(ret, NewInterval(y.R+1, x.R))
 	}
 
 	return ret
@@ -71,10 +69,10 @@ func (x Interval) Difference(y Interval) []Interval {
 func Disjoin(intvs []Interval) []Interval {
 	pq := collection.NewPriorityQueue(func(x, y Interval) bool {
 		// ascending order
-		if x.l != y.l {
-			return x.l > y.l
+		if x.L != y.L {
+			return x.L > y.L
 		}
-		return x.r > y.r
+		return x.R > y.R
 	})
 
 	for _, v := range intvs {
@@ -89,17 +87,17 @@ func Disjoin(intvs []Interval) []Interval {
 		pq.Pop()
 
 		if t1.Overlap(t2) {
-			if t1.l < t2.l {
-				nx1 := NewInterval(t1.l, t2.l-1)
-				nx2 := NewInterval(t2.l, t1.r)
-				nx3 := NewInterval(t2.l, t2.r)
+			if t1.L < t2.L {
+				nx1 := NewInterval(t1.L, t2.L-1)
+				nx2 := NewInterval(t2.L, t1.R)
+				nx3 := NewInterval(t2.L, t2.R)
 				pq.Push(nx1)
 				pq.Push(nx2)
 				pq.Push(nx3)
 			} else { // t1.l == t2.l
 				pq.Push(t1)
-				nx := NewInterval(t1.r+1, t2.r)
-				if t1.r+1 <= t2.r {
+				nx := NewInterval(t1.R+1, t2.R)
+				if t1.R+1 <= t2.R {
 					pq.Push(nx)
 				}
 			}

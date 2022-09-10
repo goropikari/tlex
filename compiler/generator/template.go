@@ -22,28 +22,42 @@ var (
 
 // state id to regex id
 var yyStateIDToRegexID = []yyRegexID{
-	0, // state 0 は BH state
-    {{ .StateIDToRegexIDTmpl }}
+	0, // state 0 is dead state
+	{{ .StateIDToRegexIDTmpl }}
 }
 
 var yyFinStates = map[yyStateID]struct{}{
-    {{ .FinStatesTmpl }}
+	{{ .FinStatesTmpl }}
 }
 
-var yyTransitionTable = map[yyStateID]map[byte]yyStateID{
-    {{ .TransitionTableTmpl }}
+type yyinterval struct {
+	l int
+	r int
 }
 
-func yyNextStep(id yyStateID, b byte) yyStateID {
+func (x yyinterval) overlap(y yyinterval) bool {
+	return y.l <= x.r && x.l <= y.r
+}
+
+var yyTransitionTable = map[yyStateID]map[yyinterval]yyStateID{
+	{{ .TransitionTableTmpl }}
+}
+
+func yyNextStep(id yyStateID, r rune) yyStateID {
 	if mp, ok := yyTransitionTable[id]; ok {
-		return mp[b]
+		t := yyinterval{l: int(r), r: int(r)}
+		for intv, sid := range mp {
+			if intv.overlap(t) {
+				return sid
+			}
+		}
 	}
 
 	return 0
 }
 
 type yyLexer struct {
-	rs          io.ReadSeeker
+	rs          RuneReadSeeker
 	beginPos    int
 	finPos      int
 	currPos     int
@@ -52,7 +66,12 @@ type yyLexer struct {
 	YYText      string
 }
 
-func New(rs io.ReadSeeker) *yyLexer {
+type RuneReadSeeker interface {
+	io.ReadSeeker
+	io.RuneScanner
+}
+
+func New(rs RuneReadSeeker) *yyLexer {
 	return &yyLexer{
 		rs:          rs,
 		beginPos:    0,
@@ -63,23 +82,22 @@ func New(rs io.ReadSeeker) *yyLexer {
 	}
 }
 
-func (yylex *yyLexer) currByte() (byte, error) {
-	b := make([]byte, 1)
-	if _, err := yylex.rs.Read(b); err != nil {
-		return 0, err
+func (yylex *yyLexer) currRune() (rune, int, error) {
+	ru, size, err := yylex.rs.ReadRune()
+	if err != nil {
+		return 0, 0, err
 	}
-	if _, err := yylex.rs.Seek(int64(yylex.currPos), io.SeekStart); err != nil {
-		return 0, err
+	if err := yylex.rs.UnreadRune(); err != nil {
+		return 0, 0, err
 	}
-
-	return b[0], nil
+	return ru, size, nil
 }
 
 func (yylex *yyLexer) Next() (int, error) {
 	yyEofCnt := 0
 yystart:
 	for  {
-		yyb, err := yylex.currByte()
+		yyr, yysize, err := yylex.currRune()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				yyEofCnt++
@@ -90,9 +108,16 @@ yystart:
 			return 0, err
 		}
 	finProcess:
-		yyNxStID := yyNextStep(yylex.currStateID, yyb)
+		yyNxStID := yyNextStep(yylex.currStateID, yyr)
 		if yyNxStID == 0 {
-			yydata := make([]byte, yylex.finPos+1-yylex.beginPos)
+			if _, err := yylex.rs.Seek(int64(yylex.finPos), io.SeekStart); err != nil {
+				return 0, err
+			}
+			_, lastSize, err := yylex.currRune()
+			if err != nil {
+				return 0, err
+			}
+			yydata := make([]byte, yylex.finPos+lastSize-yylex.beginPos)
 			if _, err := yylex.rs.Seek(int64(yylex.beginPos), io.SeekStart); err != nil {
 				return 0, err
 			}
@@ -101,7 +126,7 @@ yystart:
 			}
 			yylex.YYText = string(yydata)
 			YYText = yylex.YYText
-			yyNewCurrPos := yylex.finPos + 1
+			yyNewCurrPos := yylex.finPos + lastSize
 			yylex.beginPos = yyNewCurrPos
 			yylex.finPos = yyNewCurrPos
 			yylex.currPos = yyNewCurrPos
@@ -112,7 +137,7 @@ yystart:
 			switch regexID {
 			case 0:
 				return 0, ErrYYScan
-            {{ .RegexActionsTmpl }}
+			{{ .RegexActionsTmpl }}
 			default:
 				return 0, ErrYYScan
 			}
@@ -122,7 +147,7 @@ yystart:
 			yylex.finRegexID = yyStateIDToRegexID[yyNxStID]
 		}
 		yylex.currStateID = yyNxStID
-		yylex.currPos++
+		yylex.currPos+=yysize
 		if _, err := yylex.rs.Seek(int64(yylex.currPos), io.SeekStart); err != nil {
 			return 0, err
 		}
