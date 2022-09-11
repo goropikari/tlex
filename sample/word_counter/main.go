@@ -24,12 +24,12 @@ var (
 
 // state id to regex id
 var yyStateIDToRegexID = []yyRegexID{
-	0, // state 0 は BH state
-	1,
-	2,
+	0, // state 0 is dead state
 	1,
 	1,
 	3,
+	2,
+	1,
 }
 
 var yyFinStates = map[yyStateID]struct{}{
@@ -52,36 +52,36 @@ func (x yyinterval) overlap(y yyinterval) bool {
 
 var yyTransitionTable = map[yyStateID]map[yyinterval]yyStateID{
 	1: {
-		yyinterval{l: 9, r: 9}:        3,
-		yyinterval{l: 10, r: 10}:      5,
-		yyinterval{l: 11, r: 12}:      2,
-		yyinterval{l: 13, r: 13}:      3,
-		yyinterval{l: 14, r: 31}:      2,
-		yyinterval{l: 32, r: 32}:      4,
-		yyinterval{l: 33, r: 1114111}: 2,
-		yyinterval{l: 0, r: 8}:        2,
+		yyinterval{l: 0, r: 8}:        4,
+		yyinterval{l: 9, r: 9}:        2,
+		yyinterval{l: 10, r: 10}:      3,
+		yyinterval{l: 11, r: 12}:      4,
+		yyinterval{l: 13, r: 13}:      2,
+		yyinterval{l: 14, r: 31}:      4,
+		yyinterval{l: 32, r: 32}:      5,
+		yyinterval{l: 33, r: 1114111}: 4,
 	},
 	2: {
-		yyinterval{l: 33, r: 1114111}: 2,
-		yyinterval{l: 0, r: 8}:        2,
 		yyinterval{l: 9, r: 9}:        2,
-		yyinterval{l: 11, r: 12}:      2,
+		yyinterval{l: 11, r: 12}:      4,
 		yyinterval{l: 13, r: 13}:      2,
-		yyinterval{l: 14, r: 31}:      2,
-	},
-	3: {
-		yyinterval{l: 9, r: 9}:        3,
-		yyinterval{l: 11, r: 12}:      2,
-		yyinterval{l: 13, r: 13}:      3,
-		yyinterval{l: 14, r: 31}:      2,
-		yyinterval{l: 32, r: 32}:      4,
-		yyinterval{l: 33, r: 1114111}: 2,
-		yyinterval{l: 0, r: 8}:        2,
+		yyinterval{l: 14, r: 31}:      4,
+		yyinterval{l: 32, r: 32}:      5,
+		yyinterval{l: 33, r: 1114111}: 4,
+		yyinterval{l: 0, r: 8}:        4,
 	},
 	4: {
-		yyinterval{l: 32, r: 32}: 4,
-		yyinterval{l: 9, r: 9}:   4,
-		yyinterval{l: 13, r: 13}: 4,
+		yyinterval{l: 14, r: 31}:      4,
+		yyinterval{l: 33, r: 1114111}: 4,
+		yyinterval{l: 0, r: 8}:        4,
+		yyinterval{l: 9, r: 9}:        4,
+		yyinterval{l: 11, r: 12}:      4,
+		yyinterval{l: 13, r: 13}:      4,
+	},
+	5: {
+		yyinterval{l: 9, r: 9}:   5,
+		yyinterval{l: 13, r: 13}: 5,
+		yyinterval{l: 32, r: 32}: 5,
 	},
 }
 

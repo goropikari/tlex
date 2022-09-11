@@ -34,9 +34,15 @@ func (p *Parser) Parse() (def string, rules [][]string, userCode string) {
 }
 
 func (p *Parser) parseRules(ruleStr string) [][]string {
-	buf := bytes.NewBufferString("\n" + ruleStr)
+	buf := bytes.NewBufferString(ruleStr)
 	rules := make([][]string, 0)
 	for {
+		if err := skipWhitespace(buf); err != nil {
+			if errors.Is(err, io.EOF) {
+				return rules
+			}
+			panic(err)
+		}
 		rule := p.readRule(buf)
 		blk := p.readBlock(buf)
 		if blk == "" {
@@ -48,72 +54,86 @@ func (p *Parser) parseRules(ruleStr string) [][]string {
 	return rules
 }
 
-func (p *Parser) readRule(reader io.RuneReader) string {
-	var prev rune
+func skipWhitespace(reader io.RuneScanner) error {
 	for {
 		r, _, err := reader.ReadRune()
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return ""
-			}
-			panic(err)
+			return err
 		}
-		if prev == '\n' && r == '"' {
-			break
+		switch r {
+		case '\n', '\r', '\t', ' ':
+			continue
 		}
-		prev = r
+		if err := reader.UnreadRune(); err != nil {
+			return err
+		}
+		break
 	}
 
+	return nil
+}
+
+func (p *Parser) readRule(reader io.RuneScanner) string {
+	inRange := false
 	rs := make([]rune, 0)
 	for {
 		r, _, err := reader.ReadRune()
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
 			panic(err)
 		}
 
 		switch r {
-		case '\\':
-			if prev == '\\' {
-				rs = append(rs, r)
-				prev = 0
-				continue
-			}
-			prev = r
-			continue
-		case 'n':
-			if prev == '\\' {
-				rs = append(rs, '\n')
-				prev = 0
-				continue
-			}
-		case 'r':
-			if prev == '\\' {
-				rs = append(rs, '\r')
-				prev = 0
-				continue
-			}
-		case 't':
-			if prev == '\\' {
-				rs = append(rs, '\t')
-				prev = 0
-				continue
-			}
 		case '"':
-			if prev == '\\' {
-				prev = r
-				rs = append(rs, r)
-				continue
-			}
+			rs = append(rs, r)
+			for {
+				r, _, err = reader.ReadRune()
+				if err != nil {
+					panic(err)
+				}
 
+				switch r {
+				case '\\':
+					nr, err := nextRune(reader)
+					if err != nil {
+						panic(err)
+					}
+					reader.ReadRune()
+					if nr == '"' {
+						rs = append(rs, '\\')
+						rs = append(rs, '"')
+					}
+				case '"':
+					rs = append(rs, r)
+					return string(rs)
+				default:
+					rs = append(rs, r)
+				}
+			}
+		case '[':
+			inRange = true
+		case ']':
+			inRange = false
+		case ' ':
+			if !inRange {
+				return string(rs)
+			}
+		case '\t':
 			return string(rs)
 		}
-		prev = r
+
 		rs = append(rs, r)
 	}
-	return ""
+}
+
+func nextRune(reader io.RuneScanner) (rune, error) {
+	r, _, err := reader.ReadRune()
+	if err != nil {
+		return 0, err
+	}
+	if err := reader.UnreadRune(); err != nil {
+		return 0, err
+	}
+	return r, nil
 }
 
 func (p *Parser) readBlock(reader io.RuneReader) string {
@@ -163,7 +183,7 @@ func (p *Parser) Split() (def string, rules string, userCode string) {
 
 	def = p.readUntil(p.r, "%}\n")
 
-	p.readUntil(p.r, "%%\n")
+	_ = p.readUntil(p.r, "%%\n")
 	rules = p.readUntil(p.r, "%%\n")
 
 	var buf bytes.Buffer

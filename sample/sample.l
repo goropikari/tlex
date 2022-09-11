@@ -24,18 +24,24 @@ const (
 %}
 
 %%
-"if|for|while|func|return" { return Keyword, nil }
-"int|float64" { return Type, nil }
-"[a-zA-Z][a-zA-Z0-9]*" { return Identifier, nil }
-"[1-9][0-9]*" { return Digit, nil }
-"[ \t\n\r]*" { }
-"\\(" { return LParen, nil }
-"\\)" { return RParen, nil }
+if|for|while|func|return { return Keyword, nil }
+int|float64 { return Type, nil }
+[a-zA-Z][a-zA-Z0-9]* { return Identifier, nil }
+[1-9][0-9]* { return Digit, nil }
+[ \t\n\r]* { }
+"(" { return LParen, nil }
+")" { return RParen, nil }
 "{" { return LBracket, nil }
 "}" { return RBracket, nil }
-"\\+|\\-|\\*|/|:=|==|!=" { return Operator, nil }
-"[ぁ-ゔ]*" { return Hiragana, nil }
-"." {}
+"+" { return Operator, nil }
+"-" { return Operator, nil }
+"*" { return Operator, nil }
+"/" { return Operator, nil }
+":=" { return Operator, nil }
+"==" { return Operator, nil }
+"!=" { return Operator, nil }
+[ぁ-ゔ]* { return Hiragana, nil }
+. {}
 %%
 
 // This part is optional

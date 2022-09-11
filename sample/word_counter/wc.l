@@ -9,12 +9,12 @@ var nl = 0
 %}
 
 %%
-"[ \t\r]*" { nc++ }
-"[^ \n]*" {
+[ \t\r]* { nc++ }
+[^ \n]* {
     nc += len([]rune(YYText))
     nw++
 }
-"\n" {
+\n {
     nl++
     nc++
 }
